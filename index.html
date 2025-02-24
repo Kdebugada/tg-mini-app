@@ -60,6 +60,7 @@
         <h2>Привет, <span id="username">пользователь</span>!</h2>
         <p>Самая лучшая лотерея</p>
         <img src="foto/loto_glav_menu.jpg" alt="Лотерея" style="width: 100%; border-radius: 8px;">
+        <button class="button" onclick="buyWithStars()">Купить за 1 Stars</button>
     </div>
 
     <script>
@@ -68,6 +69,18 @@
 
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
+
+        // Функция покупки за Stars
+        function buyWithStars() {
+            tg.showPopup({
+                title: 'Покупка билета',
+                message: 'Вы хотите купить лотерейный билет за 1 Stars?',
+                buttons: [
+                    {text: 'Купить', type: 'buy', id: 'buy_ticket'},
+                    {text: 'Отмена', type: 'cancel'}
+                ]
+            });
+        }
     </script>
 </body>
 </html> 
