@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Мини приложение</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            color: var(--tg-theme-text-color);
+            background: var(--tg-theme-bg-color);
+        }
+
+        .button {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            width: 100%;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        .card {
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Привет, <span id="username">пользователь</span>!</h2>
+        <p>Это простое мини-приложение для Telegram.</p>
+    </div>
+
+    <button class="button" onclick="showAlert()">Нажми меня</button>
+    <button class="button" onclick="sendData()">Отправить данные в бот</button>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрываем на всю высоту
+
+        // Устанавливаем имя пользователя
+        document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
+
+        function showAlert() {
+            tg.showAlert('Привет! Это тестовое уведомление.');
+        }
+
+        function sendData() {
+            tg.sendData('test_action');
+            // Закрываем приложение после отправки данных
+            tg.close();
+        }
+    </script>
+</body>
+</html> 
