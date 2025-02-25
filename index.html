@@ -76,11 +76,31 @@
                 title: 'Покупка билета',
                 message: 'Вы хотите купить лотерейный билет за 1 Stars?',
                 buttons: [
-                    {text: 'Купить', type: 'buy', id: 'buy_ticket'},
+                    {text: 'Купить', type: 'default', id: 'buy_ticket'},
                     {text: 'Отмена', type: 'cancel'}
                 ]
+            }, function(buttonId) {
+                if (buttonId === 'buy_ticket') {
+                    // Здесь код для обработки покупки
+                    tg.showAlert('Билет успешно куплен!');
+                    
+                    // Отправка данных в бота
+                    tg.sendData(JSON.stringify({
+                        action: 'buy_ticket',
+                        item: 'lottery_ticket',
+                        price: 1
+                    }));
+                }
             });
         }
+        
+        // Обработчик закрытия всплывающего окна
+        tg.onEvent('popupClosed', function(data) {
+            if (data.button_id === 'buy_ticket') {
+                // Дополнительная обработка, если нужна
+                console.log('Покупка подтверждена');
+            }
+        });
     </script>
 </body>
 </html> 
