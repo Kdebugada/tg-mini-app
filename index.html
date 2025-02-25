@@ -72,33 +72,40 @@
 
         // Функция покупки за Stars
         function buyWithStars() {
-            tg.showPopup({
-                title: 'Покупка билета',
-                message: 'Вы хотите купить лотерейный билет за 1 Stars?',
-                buttons: [
-                    {text: 'Купить', type: 'default', id: 'buy_ticket'},
-                    {text: 'Отмена', type: 'cancel'}
-                ]
-            }, function(buttonId) {
-                if (buttonId === 'buy_ticket') {
-                    // Здесь код для обработки покупки
-                    tg.showAlert('Билет успешно куплен!');
-                    
-                    // Отправка данных в бота
-                    tg.sendData(JSON.stringify({
-                        action: 'buy_ticket',
-                        item: 'lottery_ticket',
-                        price: 1
-                    }));
+            // Отправляем запрос боту для создания счета
+            tg.sendData(JSON.stringify({
+                action: 'create_stars_invoice',
+                item: 'lottery_ticket',
+                price: 1
+            }));
+            
+            // Устанавливаем обработчик для получения URL счета от бота
+            tg.onEvent('mainButtonClicked', function() {
+                if (window.invoiceUrl) {
+                    // Открываем счет для оплаты Stars
+                    tg.openInvoice(window.invoiceUrl, function(status) {
+                        if (status === 'paid') {
+                            tg.showAlert('Билет успешно куплен! Stars списаны.');
+                        } else {
+                            tg.showAlert('Оплата не была завершена.');
+                        }
+                    });
                 }
             });
         }
         
-        // Обработчик закрытия всплывающего окна
-        tg.onEvent('popupClosed', function(data) {
-            if (data.button_id === 'buy_ticket') {
-                // Дополнительная обработка, если нужна
-                console.log('Покупка подтверждена');
+        // Обработчик для получения invoice_url от бота
+        tg.onEvent('invoiceOpened', function(data) {
+            // Сохраняем URL счета, полученный от бота
+            window.invoiceUrl = data.invoice_url;
+        });
+        
+        // Обработчик закрытия счета
+        tg.onEvent('invoiceClosed', function(data) {
+            if (data.status === 'paid') {
+                tg.showAlert('Билет успешно куплен! Stars списаны.');
+            } else {
+                tg.showAlert('Оплата не была завершена.');
             }
         });
     </script>
