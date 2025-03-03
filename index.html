@@ -74,10 +74,10 @@
             margin-bottom: 10px;
         }
         
-        .ticket p {
+        .ticket-image {
+            width: 100%;
+            border-radius: 8px;
             margin-bottom: 15px;
-            font-size: 0.9em;
-            opacity: 0.8;
         }
     </style>
 </head>
@@ -90,25 +90,25 @@
         <div class="ticket-container">
             <div class="ticket">
                 <h3>Стандартный билет</h3>
-                <p>Базовый шанс на выигрыш</p>
+                <img src="./foto/loto_glav_menu.jpg" alt="Стандартный билет" class="ticket-image">
                 <button class="button" onclick="buyWithStars(1, 'Стандартный')">Купить за 1 Stars</button>
             </div>
             
             <div class="ticket">
                 <h3>Серебряный билет</h3>
-                <p>Повышенный шанс на выигрыш</p>
+                <img src="./foto/loto_glav_menu.jpg" alt="Серебряный билет" class="ticket-image">
                 <button class="button" onclick="buyWithStars(10, 'Серебряный')">Купить за 10 Stars</button>
             </div>
             
             <div class="ticket">
                 <h3>Золотой билет</h3>
-                <p>Высокий шанс на выигрыш</p>
+                <img src="./foto/loto_glav_menu.jpg" alt="Золотой билет" class="ticket-image">
                 <button class="button" onclick="buyWithStars(50, 'Золотой')">Купить за 50 Stars</button>
             </div>
             
             <div class="ticket">
                 <h3>Платиновый билет</h3>
-                <p>Максимальный шанс на выигрыш</p>
+                <img src="./foto/loto_glav_menu.jpg" alt="Платиновый билет" class="ticket-image">
                 <button class="button" onclick="buyWithStars(100, 'Платиновый')">Купить за 100 Stars</button>
             </div>
         </div>

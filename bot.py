@@ -22,27 +22,27 @@ WEBAPP_URL = "https://kdebugada.github.io/tg-mini-app/"  # URL вашего ве
 TICKET_TYPES = {
     "стандартный": {
         "name": "Стандартный билет",
-        "description": "Базовый лотерейный билет с обычным шансом на выигрыш",
+        "description": "Базовый лотерейный билет",
         "price": 1,
-        "photo_url": "https://example.com/standard_ticket.jpg"
+        "photo_url": "./foto/loto_glav_menu.jpg"
     },
     "серебряный": {
         "name": "Серебряный билет",
-        "description": "Лотерейный билет с повышенным шансом на выигрыш",
+        "description": "Серебряный лотерейный билет",
         "price": 10,
-        "photo_url": "https://example.com/silver_ticket.jpg"
+        "photo_url": "./foto/loto_glav_menu.jpg"
     },
     "золотой": {
         "name": "Золотой билет",
-        "description": "Лотерейный билет с высоким шансом на выигрыш",
+        "description": "Золотой лотерейный билет",
         "price": 50,
-        "photo_url": "https://example.com/gold_ticket.jpg"
+        "photo_url": "./foto/loto_glav_menu.jpg"
     },
     "платиновый": {
         "name": "Платиновый билет",
-        "description": "Лотерейный билет с максимальным шансом на выигрыш",
+        "description": "Платиновый лотерейный билет",
         "price": 100,
-        "photo_url": "https://example.com/platinum_ticket.jpg"
+        "photo_url": "./foto/loto_glav_menu.jpg"
     }
 }
 
@@ -219,7 +219,6 @@ async def successful_payment(update: Update, context: CallbackContext) -> None:
     # Отправляем пользователю подтверждение
     await update.message.reply_text(
         f"Спасибо за покупку! Ваш {ticket_info['name']} успешно оплачен.\n"
-        f"Вы участвуете в розыгрыше призов с {'повышенным' if ticket_type != 'стандартный' else 'обычным'} шансом на выигрыш.\n"
         "Результаты будут объявлены в ближайшее время."
     )
     
