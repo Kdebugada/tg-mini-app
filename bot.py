@@ -2,8 +2,11 @@ import os
 import json
 import uuid
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, LabeledPrice
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, PreCheckoutQueryHandler
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, PreCheckoutQuery
+from aiogram.utils import executor
+from aiogram.dispatcher.filters import Command
+from aiogram.types.web_app_info import WebAppInfo
 
 # Настройка логирования
 logging.basicConfig(
@@ -46,23 +49,30 @@ TICKET_TYPES = {
     }
 }
 
+# Инициализация бота и диспетчера
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
+
+# Хранилище для данных пользователей
+user_data = {}
+
 # Обработчик команды /start
-async def start(update: Update, context: CallbackContext) -> None:
+@dp.message_handler(Command("start"))
+async def cmd_start(message: types.Message):
     """Отправляет приветственное сообщение и кнопку для запуска веб-приложения."""
-    keyboard = [
-        [InlineKeyboardButton("Открыть лотерею", web_app=WebAppInfo(url=WEBAPP_URL))]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton("Открыть лотерею", web_app=WebAppInfo(url=WEBAPP_URL)))
     
-    await update.message.reply_text(
+    await message.answer(
         "Привет! Я бот для лотереи. Нажмите кнопку ниже, чтобы открыть приложение:",
-        reply_markup=reply_markup
+        reply_markup=keyboard
     )
 
 # Обработчик команды /terms
-async def terms(update: Update, context: CallbackContext) -> None:
+@dp.message_handler(Command("terms"))
+async def cmd_terms(message: types.Message):
     """Отправляет пользователю условия использования."""
-    await update.message.reply_text(
+    await message.answer(
         "Условия использования лотереи:\n\n"
         "1. Вы должны быть старше 18 лет.\n"
         "2. Все платежи осуществляются в Telegram Stars.\n"
@@ -72,47 +82,45 @@ async def terms(update: Update, context: CallbackContext) -> None:
     )
 
 # Обработчик команды /support
-async def support(update: Update, context: CallbackContext) -> None:
+@dp.message_handler(Command("support"))
+async def cmd_support(message: types.Message):
     """Отправляет пользователю информацию о поддержке."""
-    await update.message.reply_text(
+    await message.answer(
         "Если у вас возникли вопросы или проблемы, пожалуйста, свяжитесь с нами:\n\n"
         "Email: support@example.com\n"
         "Telegram: @support_username"
     )
 
 # Обработчик команды /paysupport
-async def paysupport(update: Update, context: CallbackContext) -> None:
+@dp.message_handler(Command("paysupport"))
+async def cmd_paysupport(message: types.Message):
     """Обрабатывает запросы пользователей по вопросам оплаты."""
-    await update.message.reply_text(
+    await message.answer(
         "Если у вас возникли проблемы с оплатой, пожалуйста, опишите вашу проблему. "
         "Мы рассмотрим ваш запрос в течение 24 часов."
     )
 
 # Обработчик команды /tickets
-async def tickets(update: Update, context: CallbackContext) -> None:
+@dp.message_handler(Command("tickets"))
+async def cmd_tickets(message: types.Message):
     """Отправляет пользователю информацию о доступных билетах."""
-    message = "Доступные типы билетов:\n\n"
+    ticket_message = "Доступные типы билетов:\n\n"
     
     for ticket_type, info in TICKET_TYPES.items():
-        message += f"🎫 {info['name']} - {info['price']} Stars\n"
-        message += f"   {info['description']}\n\n"
+        ticket_message += f"🎫 {info['name']} - {info['price']} Stars\n"
+        ticket_message += f"   {info['description']}\n\n"
     
-    await update.message.reply_text(message)
+    await message.answer(ticket_message)
 
 # Обработчик данных от веб-приложения
-async def web_app_data(update: Update, context: CallbackContext) -> None:
+@dp.message_handler(content_types=types.ContentType.WEB_APP_DATA)
+async def web_app_data(message: types.Message):
     """Обрабатывает данные, полученные от веб-приложения."""
     try:
-        logger.info(f"Получено сообщение от веб-приложения: {update.message}")
-        
-        # Проверяем, есть ли данные веб-приложения
-        if not hasattr(update.message, 'web_app_data'):
-            logger.error("Сообщение не содержит данных веб-приложения")
-            await update.message.reply_text("Ошибка: данные веб-приложения не получены")
-            return
+        logger.info(f"Получено сообщение от веб-приложения: {message}")
         
         # Получаем данные от веб-приложения
-        data = json.loads(update.message.web_app_data.data)
+        data = json.loads(message.web_app_data.data)
         logger.info(f"Получены данные от веб-приложения: {data}")
         
         if data.get('action') == 'open_number_selection':
@@ -124,14 +132,15 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
             number_selection_url = f"{WEBAPP_URL}number_selection.html?type={ticket_type}&price={price}"
             
             # Отправляем пользователю кнопку для открытия страницы выбора номеров
-            keyboard = [
-                [InlineKeyboardButton(f"Выбрать номера для {ticket_type} билета", web_app=WebAppInfo(url=number_selection_url))]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
+            keyboard = InlineKeyboardMarkup()
+            keyboard.add(InlineKeyboardButton(
+                f"Выбрать номера для {ticket_type} билета", 
+                web_app=WebAppInfo(url=number_selection_url)
+            ))
             
-            await update.message.reply_text(
+            await message.answer(
                 f"Выберите 8 номеров для вашего {ticket_type} билета (цена: {price} Stars):",
-                reply_markup=reply_markup
+                reply_markup=keyboard
             )
         elif data.get('action') == 'create_stars_invoice':
             # Проверяем, есть ли информация о билетах с выбранными номерами
@@ -142,7 +151,7 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
                 
                 if not tickets:
                     logger.warning("Получен пустой список билетов")
-                    await update.message.reply_text("Ошибка: не выбраны билеты")
+                    await message.answer("Ошибка: не выбраны билеты")
                     return
                 
                 # Формируем описание для счета
@@ -162,14 +171,33 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
                 
                 # Создаем счет через Bot API
                 try:
-                    invoice = await context.bot.send_invoice(
-                        chat_id=update.effective_chat.id,
+                    invoice_payload = f"lottery_tickets_{uuid.uuid4()}"
+                    
+                    # Сохраняем информацию о билетах в данных пользователя
+                    if message.from_user.id not in user_data:
+                        user_data[message.from_user.id] = {}
+                    
+                    if 'pending_tickets' not in user_data[message.from_user.id]:
+                        user_data[message.from_user.id]['pending_tickets'] = {}
+                    
+                    user_data[message.from_user.id]['pending_tickets'][invoice_payload] = {
+                        'tickets': tickets,
+                        'total_price': total_price
+                    }
+                    
+                    await bot.send_invoice(
+                        chat_id=message.chat.id,
                         title=f"Лотерейные билеты ({len(tickets)} шт.)",
                         description=description,
-                        payload=f"lottery_tickets_{uuid.uuid4()}",
+                        payload=invoice_payload,
                         provider_token="",  # Для цифровых товаров можно оставить пустым
                         currency="XTR",  # XTR - код валюты для Telegram Stars
-                        prices=[LabeledPrice(label=f"Лотерейные билеты ({len(tickets)} шт.)", amount=price_in_min_units)],
+                        prices=[
+                            LabeledPrice(
+                                label=f"Лотерейные билеты ({len(tickets)} шт.)", 
+                                amount=price_in_min_units
+                            )
+                        ],
                         start_parameter="lottery_tickets",  # Для deep linking
                         photo_url="./foto/loto_glav_menu.jpg",  # URL изображения товара
                         photo_width=512,
@@ -181,19 +209,10 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
                         is_flexible=False
                     )
                     
-                    # Сохраняем информацию о билетах в контексте пользователя
-                    if not context.user_data.get('pending_tickets'):
-                        context.user_data['pending_tickets'] = {}
-                    
-                    context.user_data['pending_tickets'][invoice.invoice_payload] = {
-                        'tickets': tickets,
-                        'total_price': total_price
-                    }
-                    
-                    logger.info(f"Создан счет: {invoice}")
+                    logger.info(f"Создан счет с payload: {invoice_payload}")
                 except Exception as e:
                     logger.error(f"Ошибка при создании счета: {e}")
-                    await update.message.reply_text(f"Ошибка при создании счета: {str(e)}")
+                    await message.answer(f"Ошибка при создании счета: {str(e)}")
             else:
                 # Старый формат для обратной совместимости
                 # Получаем информацию о билете
@@ -203,7 +222,7 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
                 # Проверяем, существует ли такой тип билета
                 if ticket_type not in TICKET_TYPES:
                     logger.warning(f"Неизвестный тип билета: {ticket_type}")
-                    await update.message.reply_text(f"Ошибка: неизвестный тип билета {ticket_type}")
+                    await message.answer(f"Ошибка: неизвестный тип билета {ticket_type}")
                     return
                 
                 # Получаем информацию о билете
@@ -221,14 +240,21 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
                 
                 # Создаем счет через Bot API
                 try:
-                    invoice = await context.bot.send_invoice(
-                        chat_id=update.effective_chat.id,
+                    invoice_payload = f"lottery_ticket_{ticket_type}_{uuid.uuid4()}"
+                    
+                    await bot.send_invoice(
+                        chat_id=message.chat.id,
                         title=ticket_info['name'],
                         description=ticket_info['description'],
-                        payload=f"lottery_ticket_{ticket_type}_{uuid.uuid4()}",
+                        payload=invoice_payload,
                         provider_token="",  # Для цифровых товаров можно оставить пустым
                         currency="XTR",  # XTR - код валюты для Telegram Stars
-                        prices=[LabeledPrice(label=ticket_info['name'], amount=price_in_min_units)],
+                        prices=[
+                            LabeledPrice(
+                                label=ticket_info['name'], 
+                                amount=price_in_min_units
+                            )
+                        ],
                         start_parameter=f"lottery_ticket_{ticket_type}",  # Для deep linking
                         photo_url=ticket_info['photo_url'],  # URL изображения товара
                         photo_width=512,
@@ -240,39 +266,47 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
                         is_flexible=False
                     )
                     
-                    logger.info(f"Создан счет: {invoice}")
+                    logger.info(f"Создан счет с payload: {invoice_payload}")
                 except Exception as e:
                     logger.error(f"Ошибка при создании счета: {e}")
-                    await update.message.reply_text(f"Ошибка при создании счета: {str(e)}")
+                    await message.answer(f"Ошибка при создании счета: {str(e)}")
         else:
             logger.warning(f"Неизвестное действие: {data.get('action')}")
-            await update.message.reply_text(f"Неизвестное действие: {data.get('action')}")
+            await message.answer(f"Неизвестное действие: {data.get('action')}")
     
     except Exception as e:
         logger.error(f"Ошибка при обработке данных от веб-приложения: {e}")
-        await update.message.reply_text(f"Произошла ошибка: {str(e)}")
+        await message.answer(f"Произошла ошибка: {str(e)}")
 
 # Обработчик pre-checkout запросов
-async def pre_checkout_handler(update: Update, context: CallbackContext) -> None:
+@dp.pre_checkout_query_handler()
+async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
     """Обрабатывает pre-checkout запросы."""
-    query = update.pre_checkout_query
-    
     # Здесь можно проверить наличие товара, валидность заказа и т.д.
     # Если все в порядке, подтверждаем заказ
     try:
-        await query.answer(ok=True)
-        logger.info(f"Pre-checkout подтвержден: {query.id}")
+        await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+        logger.info(f"Pre-checkout подтвержден: {pre_checkout_query.id}")
     except Exception as e:
         logger.error(f"Ошибка при обработке pre-checkout: {e}")
-        await query.answer(ok=False, error_message="Произошла ошибка при обработке заказа. Пожалуйста, попробуйте позже.")
+        await bot.answer_pre_checkout_query(
+            pre_checkout_query.id, 
+            ok=False, 
+            error_message="Произошла ошибка при обработке заказа. Пожалуйста, попробуйте позже."
+        )
 
 # Обработчик успешных платежей
-async def successful_payment(update: Update, context: CallbackContext) -> None:
+@dp.message_handler(content_types=types.ContentType.SUCCESSFUL_PAYMENT)
+async def successful_payment(message: types.Message):
     """Обрабатывает успешные платежи."""
-    payment = update.message.successful_payment
+    payment = message.successful_payment
     
     # Проверяем, есть ли информация о билетах с выбранными номерами
-    pending_tickets = context.user_data.get('pending_tickets', {}).get(payment.invoice_payload)
+    user_id = message.from_user.id
+    pending_tickets = None
+    
+    if user_id in user_data and 'pending_tickets' in user_data[user_id]:
+        pending_tickets = user_data[user_id]['pending_tickets'].get(payment.invoice_payload)
     
     if pending_tickets:
         # Обработка платежа для билетов с выбранными номерами
@@ -299,15 +333,15 @@ async def successful_payment(update: Update, context: CallbackContext) -> None:
         logger.info(f"Успешный платеж за билеты с номерами: {payment_info}")
         
         # Отправляем пользователю подтверждение
-        await update.message.reply_text(
+        await message.answer(
             f"Спасибо за покупку! Ваши лотерейные билеты ({len(tickets)} шт.) успешно оплачены.\n\n"
             f"Выбранные номера:\n" + "\n".join(ticket_descriptions) + "\n\n"
             "Результаты будут объявлены в ближайшее время."
         )
         
-        # Удаляем информацию о билетах из контекста
-        if payment.invoice_payload in context.user_data.get('pending_tickets', {}):
-            del context.user_data['pending_tickets'][payment.invoice_payload]
+        # Удаляем информацию о билетах из данных пользователя
+        if payment.invoice_payload in user_data[user_id]['pending_tickets']:
+            del user_data[user_id]['pending_tickets'][payment.invoice_payload]
     else:
         # Старый формат для обратной совместимости
         # Извлекаем информацию о типе билета из payload
@@ -336,7 +370,7 @@ async def successful_payment(update: Update, context: CallbackContext) -> None:
         logger.info(f"Успешный платеж: {payment_info}")
         
         # Отправляем пользователю подтверждение
-        await update.message.reply_text(
+        await message.answer(
             f"Спасибо за покупку! Ваш {ticket_info['name']} успешно оплачен.\n"
             "Результаты будут объявлены в ближайшее время."
         )
@@ -345,30 +379,12 @@ async def successful_payment(update: Update, context: CallbackContext) -> None:
     # Например, генерация уникального кода билета, запись в базу данных и т.д.
 
 # Обработчик ошибок
-async def error_handler(update: Update, context: CallbackContext) -> None:
+@dp.errors_handler()
+async def error_handler(update, exception):
     """Логирует ошибки, вызванные обновлениями."""
-    logger.error(f"Ошибка при обработке обновления {update}: {context.error}")
+    logger.error(f"Ошибка при обработке обновления {update}: {exception}")
+    return True
 
-def main() -> None:
-    """Запускает бота."""
-    # Создаем приложение
-    application = Application.builder().token(TOKEN).build()
-
-    # Добавляем обработчики
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("terms", terms))
-    application.add_handler(CommandHandler("support", support))
-    application.add_handler(CommandHandler("paysupport", paysupport))
-    application.add_handler(CommandHandler("tickets", tickets))
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
-    application.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
-    application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
-    
-    # Регистрируем обработчик ошибок
-    application.add_error_handler(error_handler)
-
-    # Запускаем бота
-    application.run_polling()
-
+# Запуск бота
 if __name__ == '__main__':
-    main()
+    executor.start_polling(dp, skip_updates=True)
