@@ -53,6 +53,32 @@
             backdrop-filter: blur(5px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+        
+        .ticket-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .ticket {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .ticket h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .ticket p {
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -60,7 +86,32 @@
         <h2>Привет, <span id="username">пользователь</span>!</h2>
         <p>Самая лучшая лотерея</p>
         <img src="./foto/loto_glav_menu.jpg" alt="Лотерея" style="width: 100%; border-radius: 8px;">
-        <button class="button" onclick="buyWithStars()">Купить за 1 Stars</button>
+        
+        <div class="ticket-container">
+            <div class="ticket">
+                <h3>Стандартный билет</h3>
+                <p>Базовый шанс на выигрыш</p>
+                <button class="button" onclick="buyWithStars(1, 'Стандартный')">Купить за 1 Stars</button>
+            </div>
+            
+            <div class="ticket">
+                <h3>Серебряный билет</h3>
+                <p>Повышенный шанс на выигрыш</p>
+                <button class="button" onclick="buyWithStars(10, 'Серебряный')">Купить за 10 Stars</button>
+            </div>
+            
+            <div class="ticket">
+                <h3>Золотой билет</h3>
+                <p>Высокий шанс на выигрыш</p>
+                <button class="button" onclick="buyWithStars(50, 'Золотой')">Купить за 50 Stars</button>
+            </div>
+            
+            <div class="ticket">
+                <h3>Платиновый билет</h3>
+                <p>Максимальный шанс на выигрыш</p>
+                <button class="button" onclick="buyWithStars(100, 'Платиновый')">Купить за 100 Stars</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -71,11 +122,11 @@
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
         // Функция покупки за Stars
-        function buyWithStars() {
+        function buyWithStars(price, ticketType) {
             // Показываем подтверждение
             tg.showPopup({
                 title: 'Покупка билета',
-                message: 'Вы хотите купить лотерейный билет за 1 Stars?',
+                message: `Вы хотите купить ${ticketType} лотерейный билет за ${price} Stars?`,
                 buttons: [
                     {text: 'Купить', type: 'default', id: 'buy_ticket'},
                     {text: 'Отмена', type: 'cancel'}
@@ -85,8 +136,9 @@
                     // Отправляем данные боту напрямую
                     tg.sendData(JSON.stringify({
                         action: 'create_stars_invoice',
-                        item: 'lottery_ticket',
-                        price: 1
+                        item: `lottery_ticket_${ticketType.toLowerCase()}`,
+                        price: price,
+                        ticketType: ticketType
                     }));
                     
                     // Показываем сообщение пользователю

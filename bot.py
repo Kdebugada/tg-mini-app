@@ -18,6 +18,34 @@ TOKEN = "7665197621:AAFWLa0ljKEelnsjbioIeyqXUHfP3X0JOkk"
 # Путь к веб-приложению
 WEBAPP_URL = "https://kdebugada.github.io/tg-mini-app/"  # URL вашего веб-приложения
 
+# Информация о билетах
+TICKET_TYPES = {
+    "стандартный": {
+        "name": "Стандартный билет",
+        "description": "Базовый лотерейный билет с обычным шансом на выигрыш",
+        "price": 1,
+        "photo_url": "https://example.com/standard_ticket.jpg"
+    },
+    "серебряный": {
+        "name": "Серебряный билет",
+        "description": "Лотерейный билет с повышенным шансом на выигрыш",
+        "price": 10,
+        "photo_url": "https://example.com/silver_ticket.jpg"
+    },
+    "золотой": {
+        "name": "Золотой билет",
+        "description": "Лотерейный билет с высоким шансом на выигрыш",
+        "price": 50,
+        "photo_url": "https://example.com/gold_ticket.jpg"
+    },
+    "платиновый": {
+        "name": "Платиновый билет",
+        "description": "Лотерейный билет с максимальным шансом на выигрыш",
+        "price": 100,
+        "photo_url": "https://example.com/platinum_ticket.jpg"
+    }
+}
+
 # Обработчик команды /start
 async def start(update: Update, context: CallbackContext) -> None:
     """Отправляет приветственное сообщение и кнопку для запуска веб-приложения."""
@@ -60,6 +88,17 @@ async def paysupport(update: Update, context: CallbackContext) -> None:
         "Мы рассмотрим ваш запрос в течение 24 часов."
     )
 
+# Обработчик команды /tickets
+async def tickets(update: Update, context: CallbackContext) -> None:
+    """Отправляет пользователю информацию о доступных билетах."""
+    message = "Доступные типы билетов:\n\n"
+    
+    for ticket_type, info in TICKET_TYPES.items():
+        message += f"🎫 {info['name']} - {info['price']} Stars\n"
+        message += f"   {info['description']}\n\n"
+    
+    await update.message.reply_text(message)
+
 # Обработчик данных от веб-приложения
 async def web_app_data(update: Update, context: CallbackContext) -> None:
     """Обрабатывает данные, полученные от веб-приложения."""
@@ -77,23 +116,41 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
         logger.info(f"Получены данные от веб-приложения: {data}")
         
         if data.get('action') == 'create_stars_invoice':
-            # Создаем счет для оплаты Stars
-            price = int(data.get('price', 1)) * 100  # 1 Stars = 100 (в минимальных единицах)
+            # Получаем информацию о билете
+            price = int(data.get('price', 1))
+            ticket_type = data.get('ticketType', 'Стандартный').lower()
             
-            logger.info(f"Создаем счет на сумму {price} XTR")
+            # Проверяем, существует ли такой тип билета
+            if ticket_type not in TICKET_TYPES:
+                logger.warning(f"Неизвестный тип билета: {ticket_type}")
+                await update.message.reply_text(f"Ошибка: неизвестный тип билета {ticket_type}")
+                return
+            
+            # Получаем информацию о билете
+            ticket_info = TICKET_TYPES[ticket_type]
+            
+            # Проверяем, соответствует ли цена
+            if price != ticket_info['price']:
+                logger.warning(f"Несоответствие цены: ожидается {ticket_info['price']}, получено {price}")
+                price = ticket_info['price']
+            
+            # Конвертируем цену в минимальные единицы
+            price_in_min_units = price * 100  # 1 Stars = 100 (в минимальных единицах)
+            
+            logger.info(f"Создаем счет на сумму {price_in_min_units} XTR для билета типа {ticket_type}")
             
             # Создаем счет через Bot API
             try:
                 invoice = await context.bot.send_invoice(
                     chat_id=update.effective_chat.id,
-                    title="Лотерейный билет",
-                    description="Покупка лотерейного билета для участия в розыгрыше",
-                    payload=f"lottery_ticket_{uuid.uuid4()}",
+                    title=ticket_info['name'],
+                    description=ticket_info['description'],
+                    payload=f"lottery_ticket_{ticket_type}_{uuid.uuid4()}",
                     provider_token="",  # Для цифровых товаров можно оставить пустым
                     currency="XTR",  # XTR - код валюты для Telegram Stars
-                    prices=[LabeledPrice(label="Лотерейный билет", amount=price)],
-                    start_parameter="lottery_ticket",  # Для deep linking
-                    photo_url="https://example.com/lottery_ticket.jpg",  # URL изображения товара
+                    prices=[LabeledPrice(label=ticket_info['name'], amount=price_in_min_units)],
+                    start_parameter=f"lottery_ticket_{ticket_type}",  # Для deep linking
+                    photo_url=ticket_info['photo_url'],  # URL изображения товара
                     photo_width=512,
                     photo_height=512,
                     need_name=False,
@@ -134,21 +191,36 @@ async def successful_payment(update: Update, context: CallbackContext) -> None:
     """Обрабатывает успешные платежи."""
     payment = update.message.successful_payment
     
+    # Извлекаем информацию о типе билета из payload
+    payload = payment.invoice_payload
+    ticket_type = "стандартный"  # По умолчанию
+    
+    # Пытаемся извлечь тип билета из payload
+    if "_" in payload:
+        parts = payload.split("_")
+        if len(parts) >= 3 and parts[0] == "lottery" and parts[1] == "ticket":
+            ticket_type = parts[2]
+    
+    # Получаем информацию о билете
+    ticket_info = TICKET_TYPES.get(ticket_type, TICKET_TYPES["стандартный"])
+    
     # Сохраняем информацию о платеже
     payment_info = {
         "telegram_payment_charge_id": payment.telegram_payment_charge_id,
         "provider_payment_charge_id": payment.provider_payment_charge_id,
         "total_amount": payment.total_amount,
         "currency": payment.currency,
-        "invoice_payload": payment.invoice_payload
+        "invoice_payload": payment.invoice_payload,
+        "ticket_type": ticket_type
     }
     
     logger.info(f"Успешный платеж: {payment_info}")
     
     # Отправляем пользователю подтверждение
     await update.message.reply_text(
-        "Спасибо за покупку! Ваш лотерейный билет успешно оплачен.\n"
-        "Вы участвуете в розыгрыше призов. Результаты будут объявлены в ближайшее время."
+        f"Спасибо за покупку! Ваш {ticket_info['name']} успешно оплачен.\n"
+        f"Вы участвуете в розыгрыше призов с {'повышенным' if ticket_type != 'стандартный' else 'обычным'} шансом на выигрыш.\n"
+        "Результаты будут объявлены в ближайшее время."
     )
     
     # Здесь должен быть код для выдачи цифрового товара пользователю
@@ -169,6 +241,7 @@ def main() -> None:
     application.add_handler(CommandHandler("terms", terms))
     application.add_handler(CommandHandler("support", support))
     application.add_handler(CommandHandler("paysupport", paysupport))
+    application.add_handler(CommandHandler("tickets", tickets))
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_handler))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
