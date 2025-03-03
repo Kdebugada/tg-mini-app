@@ -123,8 +123,12 @@
 
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
-            // Перенаправляем на страницу выбора номеров
-            window.location.href = `number_selection.html?type=${ticketType}&price=${price}`;
+            // Отправляем данные боту напрямую для создания страницы выбора номеров
+            tg.sendData(JSON.stringify({
+                action: 'open_number_selection',
+                price: price,
+                ticketType: ticketType
+            }));
         }
         
         // Обработчик для получения invoice_url от бота

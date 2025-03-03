@@ -115,7 +115,25 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
         data = json.loads(update.message.web_app_data.data)
         logger.info(f"Получены данные от веб-приложения: {data}")
         
-        if data.get('action') == 'create_stars_invoice':
+        if data.get('action') == 'open_number_selection':
+            # Обработка запроса на открытие страницы выбора номеров
+            price = int(data.get('price', 1))
+            ticket_type = data.get('ticketType', 'Стандартный')
+            
+            # Создаем URL для веб-приложения с выбором номеров
+            number_selection_url = f"{WEBAPP_URL}number_selection.html?type={ticket_type}&price={price}"
+            
+            # Отправляем пользователю кнопку для открытия страницы выбора номеров
+            keyboard = [
+                [InlineKeyboardButton(f"Выбрать номера для {ticket_type} билета", web_app=WebAppInfo(url=number_selection_url))]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                f"Выберите 8 номеров для вашего {ticket_type} билета (цена: {price} Stars):",
+                reply_markup=reply_markup
+            )
+        elif data.get('action') == 'create_stars_invoice':
             # Проверяем, есть ли информация о билетах с выбранными номерами
             if 'tickets' in data:
                 # Обработка нескольких билетов с выбранными номерами
