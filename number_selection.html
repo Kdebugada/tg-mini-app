@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Выбор номеров</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            color: var(--tg-theme-text-color);
+            background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #24243e);
+            min-height: 100vh;
+            margin: 0;
+            animation: gradient 15s ease infinite;
+            background-size: 400% 400%;
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .number-cell {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 0;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .number-cell.selected {
+            background: rgba(52, 152, 219, 0.6);
+            color: white;
+            font-weight: bold;
+        }
+
+        .button {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            width: 100%;
+            margin: 10px 0;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .button-primary {
+            background: var(--tg-theme-button-color, #3498db);
+            color: var(--tg-theme-button-text-color, white);
+        }
+
+        .button-primary:hover {
+            background: var(--tg-theme-button-color, #2980b9);
+            opacity: 0.9;
+        }
+
+        .selected-numbers {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 18px;
+        }
+
+        .info-text {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>Выберите 8 номеров</h2>
+            <div class="info-text">Выберите 8 чисел от 1 до 36</div>
+            
+            <div class="number-grid" id="numberGrid">
+                <!-- Числа будут добавлены с помощью JavaScript -->
+            </div>
+            
+            <div class="selected-numbers">
+                Выбрано: <span id="selectedCount">0</span>/8
+            </div>
+            
+            <div class="info-text" id="ticketInfo">
+                Тип билета: <span id="ticketType">Стандартный</span>, Цена: <span id="ticketPrice">1</span> Stars
+            </div>
+            
+            <button class="button" id="addTicketBtn">Еще билет</button>
+            <button class="button button-primary" id="payBtn" disabled>Оплатить (1 Stars)</button>
+        </div>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        // Получаем параметры из URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const ticketType = urlParams.get('type') || 'Стандартный';
+        const ticketPrice = parseInt(urlParams.get('price') || '1');
+        
+        // Устанавливаем информацию о билете
+        document.getElementById('ticketType').textContent = ticketType;
+        document.getElementById('ticketPrice').textContent = ticketPrice;
+        document.getElementById('payBtn').textContent = `Оплатить (${ticketPrice} Stars)`;
+        
+        // Создаем сетку чисел
+        const numberGrid = document.getElementById('numberGrid');
+        const selectedNumbers = new Set();
+        
+        for (let i = 1; i <= 36; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'number-cell';
+            cell.textContent = i;
+            cell.dataset.number = i;
+            
+            cell.addEventListener('click', function() {
+                if (this.classList.contains('selected')) {
+                    // Если уже выбрано, снимаем выбор
+                    this.classList.remove('selected');
+                    selectedNumbers.delete(parseInt(this.dataset.number));
+                } else {
+                    // Если не выбрано и можно выбрать еще
+                    if (selectedNumbers.size < 8) {
+                        this.classList.add('selected');
+                        selectedNumbers.add(parseInt(this.dataset.number));
+                    } else {
+                        // Если уже выбрано 8 чисел, показываем уведомление
+                        tg.showAlert('Вы уже выбрали 8 чисел. Чтобы выбрать другое число, сначала отмените выбор одного из уже выбранных.');
+                    }
+                }
+                
+                // Обновляем счетчик и состояние кнопки оплаты
+                updateSelectedCount();
+            });
+            
+            numberGrid.appendChild(cell);
+        }
+        
+        // Функция обновления счетчика выбранных чисел
+        function updateSelectedCount() {
+            const count = selectedNumbers.size;
+            document.getElementById('selectedCount').textContent = count;
+            
+            // Активируем кнопку оплаты, только если выбрано ровно 8 чисел
+            document.getElementById('payBtn').disabled = count !== 8;
+        }
+        
+        // Обработчик кнопки "Еще билет"
+        document.getElementById('addTicketBtn').addEventListener('click', function() {
+            // Если выбрано 8 чисел, сохраняем их и создаем новый билет
+            if (selectedNumbers.size === 8) {
+                // Здесь можно сохранить выбранные числа
+                const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
+                
+                // Сохраняем в localStorage или другом хранилище
+                const tickets = JSON.parse(localStorage.getItem('lotteryTickets') || '[]');
+                tickets.push({
+                    type: ticketType,
+                    price: ticketPrice,
+                    numbers: selectedArray
+                });
+                localStorage.setItem('lotteryTickets', JSON.stringify(tickets));
+                
+                // Очищаем выбор для нового билета
+                selectedNumbers.clear();
+                document.querySelectorAll('.number-cell.selected').forEach(cell => {
+                    cell.classList.remove('selected');
+                });
+                updateSelectedCount();
+                
+                // Уведомляем пользователя
+                tg.showAlert('Билет добавлен! Выберите числа для следующего билета или перейдите к оплате.');
+            } else {
+                tg.showAlert('Пожалуйста, выберите 8 чисел для текущего билета.');
+            }
+        });
+        
+        // Обработчик кнопки "Оплатить"
+        document.getElementById('payBtn').addEventListener('click', function() {
+            if (selectedNumbers.size === 8) {
+                // Добавляем текущий билет
+                const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
+                const tickets = JSON.parse(localStorage.getItem('lotteryTickets') || '[]');
+                tickets.push({
+                    type: ticketType,
+                    price: ticketPrice,
+                    numbers: selectedArray
+                });
+                
+                // Рассчитываем общую стоимость
+                const totalPrice = tickets.reduce((sum, ticket) => sum + ticket.price, 0);
+                
+                // Отправляем данные боту
+                tg.sendData(JSON.stringify({
+                    action: 'create_stars_invoice',
+                    tickets: tickets,
+                    totalPrice: totalPrice
+                }));
+                
+                // Очищаем хранилище после отправки
+                localStorage.removeItem('lotteryTickets');
+                
+                // Показываем сообщение пользователю
+                tg.showAlert('Запрос на покупку отправлен!');
+            } else {
+                tg.showAlert('Пожалуйста, выберите 8 чисел для билета.');
+            }
+        });
+    </script>
+</body>
+</html> 

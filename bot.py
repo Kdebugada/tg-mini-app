@@ -116,54 +116,116 @@ async def web_app_data(update: Update, context: CallbackContext) -> None:
         logger.info(f"Получены данные от веб-приложения: {data}")
         
         if data.get('action') == 'create_stars_invoice':
-            # Получаем информацию о билете
-            price = int(data.get('price', 1))
-            ticket_type = data.get('ticketType', 'Стандартный').lower()
-            
-            # Проверяем, существует ли такой тип билета
-            if ticket_type not in TICKET_TYPES:
-                logger.warning(f"Неизвестный тип билета: {ticket_type}")
-                await update.message.reply_text(f"Ошибка: неизвестный тип билета {ticket_type}")
-                return
-            
-            # Получаем информацию о билете
-            ticket_info = TICKET_TYPES[ticket_type]
-            
-            # Проверяем, соответствует ли цена
-            if price != ticket_info['price']:
-                logger.warning(f"Несоответствие цены: ожидается {ticket_info['price']}, получено {price}")
-                price = ticket_info['price']
-            
-            # Конвертируем цену в минимальные единицы
-            price_in_min_units = price * 100  # 1 Stars = 100 (в минимальных единицах)
-            
-            logger.info(f"Создаем счет на сумму {price_in_min_units} XTR для билета типа {ticket_type}")
-            
-            # Создаем счет через Bot API
-            try:
-                invoice = await context.bot.send_invoice(
-                    chat_id=update.effective_chat.id,
-                    title=ticket_info['name'],
-                    description=ticket_info['description'],
-                    payload=f"lottery_ticket_{ticket_type}_{uuid.uuid4()}",
-                    provider_token="",  # Для цифровых товаров можно оставить пустым
-                    currency="XTR",  # XTR - код валюты для Telegram Stars
-                    prices=[LabeledPrice(label=ticket_info['name'], amount=price_in_min_units)],
-                    start_parameter=f"lottery_ticket_{ticket_type}",  # Для deep linking
-                    photo_url=ticket_info['photo_url'],  # URL изображения товара
-                    photo_width=512,
-                    photo_height=512,
-                    need_name=False,
-                    need_phone_number=False,
-                    need_email=False,
-                    need_shipping_address=False,
-                    is_flexible=False
-                )
+            # Проверяем, есть ли информация о билетах с выбранными номерами
+            if 'tickets' in data:
+                # Обработка нескольких билетов с выбранными номерами
+                tickets = data.get('tickets', [])
+                total_price = data.get('totalPrice', 0)
                 
-                logger.info(f"Создан счет: {invoice}")
-            except Exception as e:
-                logger.error(f"Ошибка при создании счета: {e}")
-                await update.message.reply_text(f"Ошибка при создании счета: {str(e)}")
+                if not tickets:
+                    logger.warning("Получен пустой список билетов")
+                    await update.message.reply_text("Ошибка: не выбраны билеты")
+                    return
+                
+                # Формируем описание для счета
+                ticket_descriptions = []
+                for i, ticket in enumerate(tickets):
+                    ticket_type = ticket.get('type', 'Стандартный')
+                    numbers = ticket.get('numbers', [])
+                    numbers_str = ', '.join(map(str, numbers))
+                    ticket_descriptions.append(f"{i+1}. {ticket_type} билет: {numbers_str}")
+                
+                description = "Покупка лотерейных билетов:\n" + "\n".join(ticket_descriptions)
+                
+                # Конвертируем цену в минимальные единицы
+                price_in_min_units = total_price * 100  # 1 Stars = 100 (в минимальных единицах)
+                
+                logger.info(f"Создаем счет на сумму {price_in_min_units} XTR для {len(tickets)} билетов")
+                
+                # Создаем счет через Bot API
+                try:
+                    invoice = await context.bot.send_invoice(
+                        chat_id=update.effective_chat.id,
+                        title=f"Лотерейные билеты ({len(tickets)} шт.)",
+                        description=description,
+                        payload=f"lottery_tickets_{uuid.uuid4()}",
+                        provider_token="",  # Для цифровых товаров можно оставить пустым
+                        currency="XTR",  # XTR - код валюты для Telegram Stars
+                        prices=[LabeledPrice(label=f"Лотерейные билеты ({len(tickets)} шт.)", amount=price_in_min_units)],
+                        start_parameter="lottery_tickets",  # Для deep linking
+                        photo_url="./foto/loto_glav_menu.jpg",  # URL изображения товара
+                        photo_width=512,
+                        photo_height=512,
+                        need_name=False,
+                        need_phone_number=False,
+                        need_email=False,
+                        need_shipping_address=False,
+                        is_flexible=False
+                    )
+                    
+                    # Сохраняем информацию о билетах в контексте пользователя
+                    if not context.user_data.get('pending_tickets'):
+                        context.user_data['pending_tickets'] = {}
+                    
+                    context.user_data['pending_tickets'][invoice.invoice_payload] = {
+                        'tickets': tickets,
+                        'total_price': total_price
+                    }
+                    
+                    logger.info(f"Создан счет: {invoice}")
+                except Exception as e:
+                    logger.error(f"Ошибка при создании счета: {e}")
+                    await update.message.reply_text(f"Ошибка при создании счета: {str(e)}")
+            else:
+                # Старый формат для обратной совместимости
+                # Получаем информацию о билете
+                price = int(data.get('price', 1))
+                ticket_type = data.get('ticketType', 'Стандартный').lower()
+                
+                # Проверяем, существует ли такой тип билета
+                if ticket_type not in TICKET_TYPES:
+                    logger.warning(f"Неизвестный тип билета: {ticket_type}")
+                    await update.message.reply_text(f"Ошибка: неизвестный тип билета {ticket_type}")
+                    return
+                
+                # Получаем информацию о билете
+                ticket_info = TICKET_TYPES[ticket_type]
+                
+                # Проверяем, соответствует ли цена
+                if price != ticket_info['price']:
+                    logger.warning(f"Несоответствие цены: ожидается {ticket_info['price']}, получено {price}")
+                    price = ticket_info['price']
+                
+                # Конвертируем цену в минимальные единицы
+                price_in_min_units = price * 100  # 1 Stars = 100 (в минимальных единицах)
+                
+                logger.info(f"Создаем счет на сумму {price_in_min_units} XTR для билета типа {ticket_type}")
+                
+                # Создаем счет через Bot API
+                try:
+                    invoice = await context.bot.send_invoice(
+                        chat_id=update.effective_chat.id,
+                        title=ticket_info['name'],
+                        description=ticket_info['description'],
+                        payload=f"lottery_ticket_{ticket_type}_{uuid.uuid4()}",
+                        provider_token="",  # Для цифровых товаров можно оставить пустым
+                        currency="XTR",  # XTR - код валюты для Telegram Stars
+                        prices=[LabeledPrice(label=ticket_info['name'], amount=price_in_min_units)],
+                        start_parameter=f"lottery_ticket_{ticket_type}",  # Для deep linking
+                        photo_url=ticket_info['photo_url'],  # URL изображения товара
+                        photo_width=512,
+                        photo_height=512,
+                        need_name=False,
+                        need_phone_number=False,
+                        need_email=False,
+                        need_shipping_address=False,
+                        is_flexible=False
+                    )
+                    
+                    logger.info(f"Создан счет: {invoice}")
+                except Exception as e:
+                    logger.error(f"Ошибка при создании счета: {e}")
+                    await update.message.reply_text(f"Ошибка при создании счета: {str(e)}")
         else:
             logger.warning(f"Неизвестное действие: {data.get('action')}")
             await update.message.reply_text(f"Неизвестное действие: {data.get('action')}")
@@ -191,36 +253,75 @@ async def successful_payment(update: Update, context: CallbackContext) -> None:
     """Обрабатывает успешные платежи."""
     payment = update.message.successful_payment
     
-    # Извлекаем информацию о типе билета из payload
-    payload = payment.invoice_payload
-    ticket_type = "стандартный"  # По умолчанию
+    # Проверяем, есть ли информация о билетах с выбранными номерами
+    pending_tickets = context.user_data.get('pending_tickets', {}).get(payment.invoice_payload)
     
-    # Пытаемся извлечь тип билета из payload
-    if "_" in payload:
-        parts = payload.split("_")
-        if len(parts) >= 3 and parts[0] == "lottery" and parts[1] == "ticket":
-            ticket_type = parts[2]
-    
-    # Получаем информацию о билете
-    ticket_info = TICKET_TYPES.get(ticket_type, TICKET_TYPES["стандартный"])
-    
-    # Сохраняем информацию о платеже
-    payment_info = {
-        "telegram_payment_charge_id": payment.telegram_payment_charge_id,
-        "provider_payment_charge_id": payment.provider_payment_charge_id,
-        "total_amount": payment.total_amount,
-        "currency": payment.currency,
-        "invoice_payload": payment.invoice_payload,
-        "ticket_type": ticket_type
-    }
-    
-    logger.info(f"Успешный платеж: {payment_info}")
-    
-    # Отправляем пользователю подтверждение
-    await update.message.reply_text(
-        f"Спасибо за покупку! Ваш {ticket_info['name']} успешно оплачен.\n"
-        "Результаты будут объявлены в ближайшее время."
-    )
+    if pending_tickets:
+        # Обработка платежа для билетов с выбранными номерами
+        tickets = pending_tickets.get('tickets', [])
+        
+        # Формируем сообщение о покупке
+        ticket_descriptions = []
+        for i, ticket in enumerate(tickets):
+            ticket_type = ticket.get('type', 'Стандартный')
+            numbers = ticket.get('numbers', [])
+            numbers_str = ', '.join(map(str, numbers))
+            ticket_descriptions.append(f"{i+1}. {ticket_type} билет: {numbers_str}")
+        
+        # Сохраняем информацию о платеже
+        payment_info = {
+            "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+            "provider_payment_charge_id": payment.provider_payment_charge_id,
+            "total_amount": payment.total_amount,
+            "currency": payment.currency,
+            "invoice_payload": payment.invoice_payload,
+            "tickets": tickets
+        }
+        
+        logger.info(f"Успешный платеж за билеты с номерами: {payment_info}")
+        
+        # Отправляем пользователю подтверждение
+        await update.message.reply_text(
+            f"Спасибо за покупку! Ваши лотерейные билеты ({len(tickets)} шт.) успешно оплачены.\n\n"
+            f"Выбранные номера:\n" + "\n".join(ticket_descriptions) + "\n\n"
+            "Результаты будут объявлены в ближайшее время."
+        )
+        
+        # Удаляем информацию о билетах из контекста
+        if payment.invoice_payload in context.user_data.get('pending_tickets', {}):
+            del context.user_data['pending_tickets'][payment.invoice_payload]
+    else:
+        # Старый формат для обратной совместимости
+        # Извлекаем информацию о типе билета из payload
+        payload = payment.invoice_payload
+        ticket_type = "стандартный"  # По умолчанию
+        
+        # Пытаемся извлечь тип билета из payload
+        if "_" in payload:
+            parts = payload.split("_")
+            if len(parts) >= 3 and parts[0] == "lottery" and parts[1] == "ticket":
+                ticket_type = parts[2]
+        
+        # Получаем информацию о билете
+        ticket_info = TICKET_TYPES.get(ticket_type, TICKET_TYPES["стандартный"])
+        
+        # Сохраняем информацию о платеже
+        payment_info = {
+            "telegram_payment_charge_id": payment.telegram_payment_charge_id,
+            "provider_payment_charge_id": payment.provider_payment_charge_id,
+            "total_amount": payment.total_amount,
+            "currency": payment.currency,
+            "invoice_payload": payment.invoice_payload,
+            "ticket_type": ticket_type
+        }
+        
+        logger.info(f"Успешный платеж: {payment_info}")
+        
+        # Отправляем пользователю подтверждение
+        await update.message.reply_text(
+            f"Спасибо за покупку! Ваш {ticket_info['name']} успешно оплачен.\n"
+            "Результаты будут объявлены в ближайшее время."
+        )
     
     # Здесь должен быть код для выдачи цифрового товара пользователю
     # Например, генерация уникального кода билета, запись в базу данных и т.д.

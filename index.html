@@ -123,28 +123,8 @@
 
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
-            // Показываем подтверждение
-            tg.showPopup({
-                title: 'Покупка билета',
-                message: `Вы хотите купить ${ticketType} лотерейный билет за ${price} Stars?`,
-                buttons: [
-                    {text: 'Купить', type: 'default', id: 'buy_ticket'},
-                    {text: 'Отмена', type: 'cancel'}
-                ]
-            }, function(buttonId) {
-                if (buttonId === 'buy_ticket') {
-                    // Отправляем данные боту напрямую
-                    tg.sendData(JSON.stringify({
-                        action: 'create_stars_invoice',
-                        item: `lottery_ticket_${ticketType.toLowerCase()}`,
-                        price: price,
-                        ticketType: ticketType
-                    }));
-                    
-                    // Показываем сообщение пользователю
-                    tg.showAlert('Запрос на покупку отправлен!');
-                }
-            });
+            // Перенаправляем на страницу выбора номеров
+            window.location.href = `number_selection.html?type=${ticketType}&price=${price}`;
         }
         
         // Обработчик для получения invoice_url от бота
