@@ -230,10 +230,6 @@
             rawParams: window.location.search
         });
         
-        // Устанавливаем информацию о билете
-        document.getElementById('ticketType').textContent = ticketType;
-        document.getElementById('ticketPrice').textContent = ticketPrice;
-
         // Массив для хранения всех билетов
         const tickets = [];
         let currentTicketIndex = 0;
@@ -250,49 +246,62 @@
         function createTicketSlide(index) {
             console.log('Создание слайда билета:', { index, ticketType, ticketPrice });
             
-            const ticketSlide = document.createElement('div');
-            ticketSlide.className = 'ticket-slide';
-            ticketSlide.innerHTML = `
-                <div class="card">
-                    <h2>Выберите 6 номеров</h2>
-                    <div class="info-text">Выберите 6 чисел от 1 до 36</div>
-                    <div class="number-grid">
-                        ${Array.from({length: 36}, (_, i) => `
-                            <div class="number-cell" data-number="${i + 1}">${i + 1}</div>
-                        `).join('')}
+            try {
+                const ticketSlide = document.createElement('div');
+                ticketSlide.className = 'ticket-slide';
+                ticketSlide.innerHTML = `
+                    <div class="card">
+                        <h2>Выберите 6 номеров</h2>
+                        <div class="info-text">Выберите 6 чисел от 1 до 36</div>
+                        <div class="number-grid">
+                            ${Array.from({length: 36}, (_, i) => `
+                                <div class="number-cell" data-number="${i + 1}">${i + 1}</div>
+                            `).join('')}
+                        </div>
+                        <div class="selected-numbers">
+                            Выбрано: <span class="selected-count">0</span>/6
+                        </div>
+                        <div class="info-text">
+                            Тип билета: ${ticketType}, Цена: ${ticketPrice} Stars
+                        </div>
                     </div>
-                    <div class="selected-numbers">
-                        Выбрано: <span class="selected-count">0</span>/6
-                    </div>
-                    <div class="info-text">
-                        Тип билета: ${ticketType}, Цена: ${ticketPrice} Stars
-                    </div>
-                </div>
-            `;
+                `;
 
-            // Добавляем обработчики для ячеек с номерами
-            ticketSlide.querySelectorAll('.number-cell').forEach(cell => {
-                cell.addEventListener('click', function() {
-                    const number = parseInt(this.dataset.number);
-                    const currentNumbers = tickets[index];
-                    
-                    if (this.classList.contains('selected')) {
-                        this.classList.remove('selected');
-                        currentNumbers.delete(number);
-                    } else if (currentNumbers.size < 6) {
-                        this.classList.add('selected');
-                        currentNumbers.add(number);
-                    } else {
-                        tg.showAlert('Вы уже выбрали 6 чисел. Чтобы выбрать другое число, сначала отмените выбор одного из уже выбранных.');
-                    }
-                    
-                    ticketSlide.querySelector('.selected-count').textContent = currentNumbers.size;
-                    updateMainButton();
+                // Добавляем обработчики для ячеек с номерами
+                ticketSlide.querySelectorAll('.number-cell').forEach(cell => {
+                    cell.addEventListener('click', function() {
+                        const number = parseInt(this.dataset.number);
+                        const currentNumbers = tickets[index];
+                        
+                        if (this.classList.contains('selected')) {
+                            this.classList.remove('selected');
+                            currentNumbers.delete(number);
+                        } else if (currentNumbers.size < 6) {
+                            this.classList.add('selected');
+                            currentNumbers.add(number);
+                        } else {
+                            tg.showAlert('Вы уже выбрали 6 чисел. Чтобы выбрать другое число, сначала отмените выбор одного из уже выбранных.');
+                        }
+                        
+                        ticketSlide.querySelector('.selected-count').textContent = currentNumbers.size;
+                        updateMainButton();
+                    });
                 });
-            });
 
-            document.getElementById('ticketsContainer').appendChild(ticketSlide);
-            updateTicketDisplay(index);
+                const container = document.getElementById('ticketsContainer');
+                if (!container) {
+                    console.error('Не найден контейнер для билетов');
+                    tg.showAlert('Ошибка при создании билета. Пожалуйста, вернитесь в главное меню и попробуйте снова.');
+                    return;
+                }
+                
+                container.appendChild(ticketSlide);
+                updateTicketDisplay(index);
+                console.log('Слайд билета успешно создан');
+            } catch (error) {
+                console.error('Ошибка при создании слайда билета:', error);
+                tg.showAlert('Произошла ошибка при создании билета. Пожалуйста, вернитесь в главное меню и попробуйте снова.');
+            }
         }
 
         // Обновление отображения билета
