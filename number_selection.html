@@ -454,9 +454,9 @@
                 totalPriceElement.style.display = tickets.length > 1 ? 'block' : 'none';
 
                 if (tickets.length > 1) {
-                    tg.MainButton.text = `Подтвердить выбор (${totalStars} Stars)`;
+                    tg.MainButton.text = `Купить билеты (${totalStars} Stars)`;
                 } else {
-                    tg.MainButton.text = "Подтвердить выбор";
+                    tg.MainButton.text = "Купить билет";
                 }
             } catch (error) {
                 console.error('Ошибка при обновлении общей стоимости:', error);
@@ -465,11 +465,15 @@
 
         // Обновление состояния главной кнопки
         function updateMainButton() {
-            const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
-            if (allTicketsComplete) {
-                tg.MainButton.show();
+            // Удаляем скрытие кнопки, теперь она всегда видна
+            tg.MainButton.show();
+            
+            // Обновляем текст кнопки в зависимости от количества билетов
+            if (tickets.length > 1) {
+                const totalStars = tickets.length * (ticketPrice || 1);
+                tg.MainButton.text = `Купить билеты (${totalStars} Stars)`;
             } else {
-                tg.MainButton.hide();
+                tg.MainButton.text = "Купить билет";
             }
         }
 
@@ -479,13 +483,14 @@
         });
         
         // Настройка главной кнопки
-        tg.MainButton.text = "Подтвердить выбор";
-        tg.MainButton.hide();
+        tg.MainButton.text = "Купить билет";
+        tg.MainButton.show(); // Кнопка всегда видна
         
         // Обработчик нажатия на главную кнопку
         tg.MainButton.onClick(() => {
             try {
                 const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
+                
                 if (allTicketsComplete) {
                     // Убедимся, что у нас есть значения для отправки
                     const finalTicketType = ticketType || 'Стандартный';
@@ -506,7 +511,40 @@
                     console.log('Отправляем данные:', dataToSend);
                     tg.sendData(JSON.stringify(dataToSend));
                 } else {
-                    tg.showAlert('Пожалуйста, выберите 6 чисел для каждого билета.');
+                    // Находим индексы незаполненных билетов
+                    const incompleteTickets = tickets.map((ticket, index) => 
+                        ticket.size < 6 ? index + 1 : null
+                    ).filter(index => index !== null);
+                    
+                    // Формируем сообщение с указанием незаполненных билетов
+                    let message = 'Пожалуйста, выберите 6 чисел для ';
+                    
+                    if (incompleteTickets.length === 1) {
+                        message += `билета №${incompleteTickets[0]}`;
+                    } else {
+                        message += `следующих билетов: ${incompleteTickets.join(', ')}`;
+                    }
+                    
+                    // Если текущий билет не заполнен, переключаемся на него
+                    const currentTicketComplete = tickets[currentTicketIndex].size === 6;
+                    if (!currentTicketComplete) {
+                        message += '\n\nЗаполните текущий билет.';
+                    } else {
+                        // Находим первый незаполненный билет
+                        const firstIncompleteIndex = tickets.findIndex(ticket => ticket.size < 6);
+                        if (firstIncompleteIndex !== -1 && firstIncompleteIndex !== currentTicketIndex) {
+                            // Переключаемся на первый незаполненный билет
+                            currentTicketIndex = firstIncompleteIndex;
+                            const container = document.getElementById('ticketsContainer');
+                            container.style.transition = 'transform 0.3s ease-out';
+                            container.style.transform = `translateX(-${currentTicketIndex * 100}%)`;
+                            updatePaginationDots();
+                            
+                            message += '\n\nПереключаемся на незаполненный билет.';
+                        }
+                    }
+                    
+                    tg.showAlert(message);
                 }
             } catch (error) {
                 console.error('Ошибка при отправке данных:', error);
