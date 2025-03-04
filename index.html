@@ -166,22 +166,18 @@
                     priceToString: price.toString()
                 });
                 
-                // Создаем URL для страницы выбора номеров с корректным кодированием
-                const params = new URLSearchParams();
-                params.append('type', encodeURIComponent(ticketType));
-                params.append('price', encodeURIComponent(price.toString()));
-                const number_selection_url = `number_selection.html?${params.toString()}`;
-                
-                console.log('Сформированный URL:', number_selection_url);
-                console.log('URL search params:', params.toString());
-
-                // Сохраняем данные о билете
+                // Сохраняем данные о билете в localStorage
                 const ticketData = {
                     type: ticketType,
                     price: price
                 };
                 localStorage.setItem('currentTicket', JSON.stringify(ticketData));
-                console.log('Сохранены данные билета:', ticketData);
+                console.log('Сохранены данные билета в localStorage:', ticketData);
+                
+                // Создаем URL для страницы выбора номеров
+                const number_selection_url = `number_selection.html?type=${encodeURIComponent(ticketType)}&price=${encodeURIComponent(price.toString())}`;
+                
+                console.log('Сформированный URL:', number_selection_url);
                 
                 // Переходим на страницу выбора номеров
                 window.location.href = number_selection_url;

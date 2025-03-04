@@ -211,7 +211,7 @@
         
         // Получаем параметры из URL
         const urlParams = new URLSearchParams(window.location.search);
-        const ticketType = urlParams.get('type') ? decodeURIComponent(urlParams.get('type')) : null;
+        let ticketType = urlParams.get('type') ? decodeURIComponent(urlParams.get('type')) : null;
         let ticketPrice = urlParams.get('price') ? decodeURIComponent(urlParams.get('price')) : null;
 
         console.log('Получены параметры из URL:', { 
@@ -221,43 +221,33 @@
             rawSearch: window.location.search
         });
 
-        // Проверяем наличие параметров
-        if (!ticketType || !ticketPrice) {
-            console.error('Отсутствуют необходимые параметры в URL');
-            
-            // Пробуем загрузить данные из localStorage как запасной вариант
-            try {
-                const savedTicketData = localStorage.getItem('currentTicket');
-                if (savedTicketData) {
-                    const ticketData = JSON.parse(savedTicketData);
-                    console.log('Загружены данные билета из localStorage:', ticketData);
-                    
-                    if (!ticketType && ticketData.type) {
-                        ticketType = ticketData.type;
-                    }
-                    
-                    if (!ticketPrice && ticketData.price) {
-                        ticketPrice = ticketData.price.toString();
-                    }
-                    
-                    if (ticketType && ticketPrice) {
-                        console.log('Восстановлены параметры из localStorage:', { ticketType, ticketPrice });
-                    } else {
-                        alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
-                        window.location.href = 'index.html';
-                        return;
-                    }
-                } else {
-                    alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
-                    window.location.href = 'index.html';
-                    return;
+        // Пробуем загрузить данные из localStorage как запасной вариант
+        try {
+            const savedTicketData = localStorage.getItem('currentTicket');
+            if (savedTicketData) {
+                const ticketData = JSON.parse(savedTicketData);
+                console.log('Загружены данные билета из localStorage:', ticketData);
+                
+                if (!ticketType && ticketData.type) {
+                    ticketType = ticketData.type;
                 }
-            } catch (error) {
-                console.error('Ошибка при загрузке данных из localStorage:', error);
-                alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
-                window.location.href = 'index.html';
-                return;
+                
+                if (!ticketPrice && ticketData.price) {
+                    ticketPrice = ticketData.price.toString();
+                }
+                
+                console.log('После проверки localStorage:', { ticketType, ticketPrice });
             }
+        } catch (error) {
+            console.error('Ошибка при загрузке данных из localStorage:', error);
+        }
+
+        // Проверяем наличие параметров после всех попыток их получить
+        if (!ticketType || !ticketPrice) {
+            console.error('Отсутствуют необходимые параметры после всех проверок');
+            alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
+            window.location.href = 'index.html';
+            return;
         }
 
         // Преобразуем цену в число
@@ -304,6 +294,11 @@
             try {
                 const ticketSlide = document.createElement('div');
                 ticketSlide.className = 'ticket-slide';
+                
+                // Убедимся, что у нас есть значения для отображения
+                const displayType = ticketType || 'Стандартный';
+                const displayPrice = ticketPrice || 1;
+                
                 ticketSlide.innerHTML = `
                     <div class="card">
                         <h2>Выберите 6 номеров</h2>
@@ -317,7 +312,7 @@
                             Выбрано: <span class="selected-count">0</span>/6
                         </div>
                         <div class="info-text">
-                            Тип билета: ${ticketType || 'Стандартный'}, Цена: ${ticketPrice || 1} Stars
+                            Тип билета: ${displayType}, Цена: ${displayPrice} Stars
                         </div>
                     </div>
                 `;
@@ -426,21 +421,27 @@
 
         // Обновление общей стоимости
         function updateTotalPrice() {
-            const totalStars = tickets.length * ticketPrice;
-            const totalPriceElement = document.getElementById('totalPrice');
-            
-            if (!totalPriceElement) {
-                console.error('Не найден элемент для отображения общей стоимости');
-                return;
-            }
-            
-            totalPriceElement.textContent = `Итого: ${totalStars} Stars`;
-            totalPriceElement.style.display = tickets.length > 1 ? 'block' : 'none';
+            try {
+                // Убедимся, что у нас есть значение цены
+                const finalTicketPrice = ticketPrice || 1;
+                const totalStars = tickets.length * finalTicketPrice;
+                
+                const totalPriceElement = document.getElementById('totalPrice');
+                if (!totalPriceElement) {
+                    console.error('Не найден элемент для отображения общей стоимости');
+                    return;
+                }
+                
+                totalPriceElement.textContent = `Итого: ${totalStars} Stars`;
+                totalPriceElement.style.display = tickets.length > 1 ? 'block' : 'none';
 
-            if (tickets.length > 1) {
-                tg.MainButton.text = `Подтвердить выбор (${totalStars} Stars)`;
-            } else {
-                tg.MainButton.text = "Подтвердить выбор";
+                if (tickets.length > 1) {
+                    tg.MainButton.text = `Подтвердить выбор (${totalStars} Stars)`;
+                } else {
+                    tg.MainButton.text = "Подтвердить выбор";
+                }
+            } catch (error) {
+                console.error('Ошибка при обновлении общей стоимости:', error);
             }
         }
 
@@ -465,19 +466,33 @@
         
         // Обработчик нажатия на главную кнопку
         tg.MainButton.onClick(() => {
-            const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
-            if (allTicketsComplete) {
-                const ticketsData = tickets.map(numbers => ({
-                    type: ticketType || 'Стандартный',
-                    price: ticketPrice || 1,
-                    numbers: Array.from(numbers).sort((a, b) => a - b)
-                }));
-                
-                tg.sendData(JSON.stringify({
-                    action: 'create_stars_invoice',
-                    tickets: ticketsData,
-                    totalPrice: ticketPrice * tickets.length
-                }));
+            try {
+                const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
+                if (allTicketsComplete) {
+                    // Убедимся, что у нас есть значения для отправки
+                    const finalTicketType = ticketType || 'Стандартный';
+                    const finalTicketPrice = ticketPrice || 1;
+                    
+                    const ticketsData = tickets.map(numbers => ({
+                        type: finalTicketType,
+                        price: finalTicketPrice,
+                        numbers: Array.from(numbers).sort((a, b) => a - b)
+                    }));
+                    
+                    const dataToSend = {
+                        action: 'create_stars_invoice',
+                        tickets: ticketsData,
+                        totalPrice: finalTicketPrice * tickets.length
+                    };
+                    
+                    console.log('Отправляем данные:', dataToSend);
+                    tg.sendData(JSON.stringify(dataToSend));
+                } else {
+                    tg.showAlert('Пожалуйста, выберите 6 чисел для каждого билета.');
+                }
+            } catch (error) {
+                console.error('Ошибка при отправке данных:', error);
+                tg.showAlert('Произошла ошибка при отправке данных. Пожалуйста, попробуйте еще раз.');
             }
         });
 
