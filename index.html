@@ -159,30 +159,23 @@
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
             try {
+                // Выводим информацию о переходе в консоль
                 console.log('Переход к выбору номеров:', { 
                     price: price, 
-                    ticketType: ticketType, 
-                    priceType: typeof price,
-                    priceToString: price.toString()
+                    ticketType: ticketType
                 });
                 
-                // Сохраняем данные о билете в localStorage
-                const ticketData = {
+                // Сохраняем данные билета в localStorage для надежности
+                localStorage.setItem('currentTicket', JSON.stringify({
                     type: ticketType,
                     price: price
-                };
-                localStorage.setItem('currentTicket', JSON.stringify(ticketData));
-                console.log('Сохранены данные билета в localStorage:', ticketData);
+                }));
                 
-                // Создаем URL для страницы выбора номеров
-                const number_selection_url = `number_selection.html?type=${encodeURIComponent(ticketType)}&price=${encodeURIComponent(price.toString())}`;
+                // Прямой переход на страницу выбора номеров
+                window.location.href = 'number_selection.html';
                 
-                console.log('Сформированный URL:', number_selection_url);
-                
-                // Переходим на страницу выбора номеров
-                window.location.href = number_selection_url;
-
             } catch (error) {
+                // Логируем ошибку и показываем уведомление пользователю
                 console.error('Ошибка при переходе к выбору номеров:', error);
                 tg.showAlert('Произошла ошибка. Пожалуйста, попробуйте еще раз.');
             }

@@ -199,6 +199,7 @@
     </div>
 
     <script>
+        // Инициализация Telegram WebApp
         let tg = window.Telegram.WebApp;
         tg.expand();
         tg.enableClosingConfirmation();
@@ -209,71 +210,45 @@
             window.location.href = 'index.html';
         });
         
-        // Получаем параметры из URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let ticketType = urlParams.get('type') ? decodeURIComponent(urlParams.get('type')) : null;
-        let ticketPrice = urlParams.get('price') ? decodeURIComponent(urlParams.get('price')) : null;
-
-        console.log('Получены параметры из URL:', { 
-            ticketType: ticketType, 
-            ticketPrice: ticketPrice,
-            ticketPriceType: typeof ticketPrice,
-            rawSearch: window.location.search
-        });
-
-        // Пробуем загрузить данные из localStorage как запасной вариант
+        // Получаем данные билета только из localStorage
+        let ticketType = 'Стандартный'; // Значение по умолчанию
+        let ticketPrice = 1; // Значение по умолчанию
+        
         try {
+            // Пытаемся загрузить данные из localStorage
             const savedTicketData = localStorage.getItem('currentTicket');
+            
             if (savedTicketData) {
+                // Если данные есть, парсим их
                 const ticketData = JSON.parse(savedTicketData);
                 console.log('Загружены данные билета из localStorage:', ticketData);
                 
-                if (!ticketType && ticketData.type) {
+                // Устанавливаем тип билета, если он есть
+                if (ticketData.type) {
                     ticketType = ticketData.type;
                 }
                 
-                if (!ticketPrice && ticketData.price) {
-                    ticketPrice = ticketData.price.toString();
+                // Устанавливаем цену билета, если она есть
+                if (ticketData.price) {
+                    // Преобразуем цену в число
+                    const parsedPrice = parseInt(ticketData.price, 10);
+                    if (!isNaN(parsedPrice)) {
+                        ticketPrice = parsedPrice;
+                    }
                 }
-                
-                console.log('После проверки localStorage:', { ticketType, ticketPrice });
+            } else {
+                console.warn('Данные билета не найдены в localStorage, используются значения по умолчанию');
             }
         } catch (error) {
+            // В случае ошибки используем значения по умолчанию
             console.error('Ошибка при загрузке данных из localStorage:', error);
         }
-
-        // Проверяем наличие параметров после всех попыток их получить
-        if (!ticketType || !ticketPrice) {
-            console.error('Отсутствуют необходимые параметры после всех проверок');
-            alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
-            window.location.href = 'index.html';
-            return;
-        }
-
-        // Преобразуем цену в число
-        ticketPrice = parseInt(ticketPrice, 10);
-        if (isNaN(ticketPrice)) {
-            console.error('Цена билета не является числом:', ticketPrice);
-            ticketPrice = 1; // Устанавливаем значение по умолчанию
-            console.log('Установлено значение по умолчанию:', ticketPrice);
-        }
-
-        console.log('После обработки:', { 
+        
+        console.log('Используемые данные билета:', { 
             ticketType: ticketType, 
             ticketPrice: ticketPrice,
-            ticketPriceType: typeof ticketPrice 
+            ticketPriceType: typeof ticketPrice
         });
-
-        // Загружаем данные о текущем билете из localStorage
-        try {
-            const savedTicketData = localStorage.getItem('currentTicket');
-            if (savedTicketData) {
-                const ticketData = JSON.parse(savedTicketData);
-                console.log('Загружены данные билета из localStorage:', ticketData);
-            }
-        } catch (error) {
-            console.error('Ошибка при загрузке данных билета из localStorage:', error);
-        }
         
         // Массив для хранения всех билетов
         const tickets = [];
@@ -289,16 +264,15 @@
 
         // Функция создания слайда билета
         function createTicketSlide(index) {
+            // Логируем информацию о создании слайда
             console.log('Создание слайда билета:', { index, ticketType, ticketPrice });
             
             try {
+                // Создаем элемент слайда
                 const ticketSlide = document.createElement('div');
                 ticketSlide.className = 'ticket-slide';
                 
-                // Убедимся, что у нас есть значения для отображения
-                const displayType = ticketType || 'Стандартный';
-                const displayPrice = ticketPrice || 1;
-                
+                // Формируем HTML содержимое слайда
                 ticketSlide.innerHTML = `
                     <div class="card">
                         <h2>Выберите 6 номеров</h2>
@@ -312,7 +286,7 @@
                             Выбрано: <span class="selected-count">0</span>/6
                         </div>
                         <div class="info-text">
-                            Тип билета: ${displayType}, Цена: ${displayPrice} Stars
+                            Тип билета: ${ticketType}, Цена: ${ticketPrice} Stars
                         </div>
                     </div>
                 `;
@@ -324,31 +298,40 @@
                         const currentNumbers = tickets[index];
                         
                         if (this.classList.contains('selected')) {
+                            // Если ячейка уже выбрана, снимаем выбор
                             this.classList.remove('selected');
                             currentNumbers.delete(number);
                         } else if (currentNumbers.size < 6) {
+                            // Если выбрано меньше 6 чисел, добавляем новое
                             this.classList.add('selected');
                             currentNumbers.add(number);
                         } else {
+                            // Если уже выбрано 6 чисел, показываем предупреждение
                             tg.showAlert('Вы уже выбрали 6 чисел. Чтобы выбрать другое число, сначала отмените выбор одного из уже выбранных.');
                         }
                         
+                        // Обновляем счетчик выбранных чисел
                         ticketSlide.querySelector('.selected-count').textContent = currentNumbers.size;
+                        // Обновляем состояние главной кнопки
                         updateMainButton();
                     });
                 });
 
+                // Находим контейнер для билетов
                 const container = document.getElementById('ticketsContainer');
                 if (!container) {
                     console.error('Не найден контейнер для билетов');
-                    tg.showAlert('Ошибка при создании билета. Пожалуйста, вернитесь в главное меню и попробуйте снова.');
                     return;
                 }
                 
+                // Добавляем слайд в контейнер
                 container.appendChild(ticketSlide);
+                // Обновляем отображение билета
                 updateTicketDisplay(index);
+                
                 console.log('Слайд билета успешно создан');
             } catch (error) {
+                // Логируем ошибку
                 console.error('Ошибка при создании слайда билета:', error);
                 tg.showAlert('Произошла ошибка при создании билета. Пожалуйста, вернитесь в главное меню и попробуйте снова.');
             }
@@ -499,20 +482,38 @@
         // Обработчик кнопки "Добавить билет"
         document.getElementById('addTicketBtn').addEventListener('click', function() {
             try {
+                // Получаем текущий набор выбранных номеров
                 const currentNumbers = tickets[currentTicketIndex];
+                
+                // Проверяем, что выбрано 6 номеров
                 if (currentNumbers.size === 6) {
+                    // Создаем новый пустой набор номеров
                     tickets.push(new Set());
+                    
+                    // Создаем слайд для нового билета
                     createTicketSlide(tickets.length - 1);
+                    
+                    // Переключаемся на новый билет
                     currentTicketIndex = tickets.length - 1;
+                    
+                    // Обновляем положение контейнера
                     const container = document.getElementById('ticketsContainer');
                     container.style.transform = `translateX(-${currentTicketIndex * 100}%)`;
+                    
+                    // Обновляем точки пагинации и общую стоимость
                     updatePaginationDots();
                     updateTotalPrice();
+                    
+                    // Показываем уведомление
                     tg.showAlert('Создан новый билет. Выберите 6 чисел.');
+                    
+                    console.log('Добавлен новый билет, всего билетов:', tickets.length);
                 } else {
+                    // Показываем предупреждение, если не выбрано 6 номеров
                     tg.showAlert('Пожалуйста, выберите 6 чисел для текущего билета.');
                 }
             } catch (error) {
+                // Логируем ошибку
                 console.error('Ошибка при добавлении билета:', error);
                 tg.showAlert('Произошла ошибка при добавлении билета. Пожалуйста, попробуйте еще раз.');
             }
