@@ -161,8 +161,11 @@
             try {
                 console.log('Переход к выбору номеров:', { price, ticketType });
                 
-                // Создаем URL для страницы выбора номеров
-                const number_selection_url = `number_selection.html?type=${encodeURIComponent(ticketType)}&price=${encodeURIComponent(price)}`;
+                // Создаем URL для страницы выбора номеров с корректным кодированием
+                const params = new URLSearchParams();
+                params.append('type', ticketType);
+                params.append('price', price);
+                const number_selection_url = `number_selection.html?${params.toString()}`;
                 
                 // Сохраняем данные о билете
                 localStorage.setItem('currentTicket', JSON.stringify({

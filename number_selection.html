@@ -204,8 +204,25 @@
         
         // Получаем параметры из URL
         const urlParams = new URLSearchParams(window.location.search);
-        const ticketType = urlParams.get('type') || 'Стандартный';
-        const ticketPrice = parseInt(urlParams.get('price') || '1');
+        const ticketType = urlParams.get('type');
+        const ticketPrice = parseInt(urlParams.get('price'));
+
+        // Проверяем наличие параметров
+        if (!ticketType || isNaN(ticketPrice)) {
+            console.error('Ошибка: отсутствуют необходимые параметры', {
+                type: ticketType,
+                price: urlParams.get('price')
+            });
+            tg.showAlert('Ошибка при загрузке параметров билета. Пожалуйста, вернитесь в главное меню и попробуйте снова.');
+            window.location.href = 'index.html';
+            throw new Error('Missing required parameters');
+        }
+
+        console.log('Параметры билета:', {
+            type: ticketType,
+            price: ticketPrice,
+            rawParams: window.location.search
+        });
         
         // Устанавливаем информацию о билете
         document.getElementById('ticketType').textContent = ticketType;
