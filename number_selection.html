@@ -502,27 +502,33 @@
                         numbers: Array.from(numbers).sort((a, b) => a - b)
                     }));
                     
+                    // Получаем данные пользователя из initDataUnsafe
+                    const userData = tg.initDataUnsafe?.user || {};
+                    
                     // Формируем данные для отправки боту
-                    const dataToSend = JSON.stringify({
+                    const dataToSend = {
                         action: 'buy_tickets',
                         tickets: ticketsData,
                         totalPrice: finalTicketPrice * tickets.length,
                         ticketType: finalTicketType,
-                        ticketCount: tickets.length
-                    });
+                        ticketCount: tickets.length,
+                        user: {
+                            id: userData.id,
+                            first_name: userData.first_name,
+                            last_name: userData.last_name,
+                            username: userData.username
+                        }
+                    };
                     
                     console.log('Отправляем данные боту для создания чека:', dataToSend);
                     
                     // Отправляем данные боту через Telegram WebApp API
-                    tg.sendData(dataToSend);
+                    tg.sendData(JSON.stringify(dataToSend));
                     
                     // Показываем уведомление пользователю
                     tg.showAlert('Данные отправлены. Проверьте сообщения от бота для оплаты.');
                     
-                    // Закрываем мини-приложение после отправки данных
-                    setTimeout(() => {
-                        tg.close();
-                    }, 1500);
+                    // Не закрываем мини-приложение
                 } else {
                     // Находим индексы незаполненных билетов
                     const incompleteTickets = tickets.map((ticket, index) => 
