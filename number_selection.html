@@ -503,19 +503,18 @@
                     }));
                     
                     // Формируем данные для отправки боту
-                    const dataToSend = {
-                        action: 'send_invoice_to_bot',
+                    const dataToSend = JSON.stringify({
+                        action: 'buy_tickets',
                         tickets: ticketsData,
                         totalPrice: finalTicketPrice * tickets.length,
                         ticketType: finalTicketType,
-                        ticketCount: tickets.length,
-                        selectedNumbers: ticketsData.map(t => t.numbers)
-                    };
+                        ticketCount: tickets.length
+                    });
                     
                     console.log('Отправляем данные боту для создания чека:', dataToSend);
                     
-                    // Отправляем данные боту
-                    tg.sendData(JSON.stringify(dataToSend));
+                    // Отправляем данные боту через Telegram WebApp API
+                    tg.sendData(dataToSend);
                     
                     // Показываем уведомление пользователю
                     tg.showAlert('Данные отправлены. Проверьте сообщения от бота для оплаты.');
