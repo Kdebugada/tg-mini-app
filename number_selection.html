@@ -41,6 +41,7 @@
             margin: 10px 0;
             backdrop-filter: blur(5px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
 
         h2 {
@@ -83,6 +84,53 @@
             font-size: 14px;
             opacity: 0.8;
         }
+
+        .navigation-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .nav-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .ticket-navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .ticket-counter {
+            font-size: 16px;
+            color: white;
+        }
+
+        .total-price {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 152, 219, 0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -102,22 +150,27 @@
             <div class="info-text" id="ticketInfo">
                 Тип билета: <span id="ticketType">Стандартный</span>, Цена: <span id="ticketPrice">1</span> Stars
             </div>
+
+            <div class="ticket-navigation">
+                <button class="nav-button" id="prevTicket" disabled>←</button>
+                <span class="ticket-counter">Билет <span id="currentTicket">1</span></span>
+                <button class="nav-button" id="nextTicket">→</button>
+            </div>
+
+            <div class="navigation-buttons">
+                <button class="nav-button" id="backButton">Назад в меню</button>
+                <button class="nav-button" id="addTicketBtn">Добавить билет</button>
+            </div>
         </div>
+    </div>
+
+    <div class="total-price" id="totalPrice" style="display: none">
+        Итого: 0 Stars
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
-        
-        // Настраиваем кнопку "Назад"
-        tg.BackButton.show();
-        tg.BackButton.onClick(() => {
-            window.location.href = 'index.html';
-        });
-
-        // Настраиваем главную кнопку
-        tg.MainButton.text = "Подтвердить выбор";
-        tg.MainButton.hide();
         
         // Получаем параметры из URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -127,15 +180,75 @@
         // Устанавливаем информацию о билете
         document.getElementById('ticketType').textContent = ticketType;
         document.getElementById('ticketPrice').textContent = ticketPrice;
-        document.getElementById('payBtn').textContent = `Оплатить (${ticketPrice} Stars)`;
+
+        // Массив для хранения всех билетов
+        const tickets = [];
+        let currentTicketIndex = 0;
+
+        // Создаем первый билет
+        tickets.push(new Set());
+
+        // Обновляем состояние кнопок навигации
+        function updateNavigationButtons() {
+            document.getElementById('prevTicket').disabled = currentTicketIndex === 0;
+            document.getElementById('nextTicket').disabled = currentTicketIndex === tickets.length - 1;
+            document.getElementById('currentTicket').textContent = currentTicketIndex + 1;
+            
+            // Обновляем общую стоимость
+            const totalStars = tickets.length * ticketPrice;
+            const totalPriceElement = document.getElementById('totalPrice');
+            totalPriceElement.textContent = `Итого: ${totalStars} Stars`;
+            totalPriceElement.style.display = tickets.length > 1 ? 'block' : 'none';
+
+            // Обновляем текст главной кнопки
+            if (tickets.length > 1) {
+                tg.MainButton.text = `Подтвердить выбор (${totalStars} Stars)`;
+            } else {
+                tg.MainButton.text = "Подтвердить выбор";
+            }
+        }
+
+        // Обработчики навигации по билетам
+        document.getElementById('prevTicket').addEventListener('click', () => {
+            if (currentTicketIndex > 0) {
+                currentTicketIndex--;
+                updateTicketDisplay();
+                updateNavigationButtons();
+            }
+        });
+
+        document.getElementById('nextTicket').addEventListener('click', () => {
+            if (currentTicketIndex < tickets.length - 1) {
+                currentTicketIndex++;
+                updateTicketDisplay();
+                updateNavigationButtons();
+            }
+        });
+
+        // Обновление отображения текущего билета
+        function updateTicketDisplay() {
+            const currentNumbers = tickets[currentTicketIndex];
+            document.querySelectorAll('.number-cell').forEach(cell => {
+                const number = parseInt(cell.dataset.number);
+                cell.classList.toggle('selected', currentNumbers.has(number));
+            });
+            document.getElementById('selectedCount').textContent = currentNumbers.size;
+            updateMainButton();
+        }
+
+        // Обработчик кнопки "Назад"
+        document.getElementById('backButton').addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
         
-        // Создаем сетку чисел
-        const numberGrid = document.getElementById('numberGrid');
-        const selectedNumbers = new Set();
+        // Настраиваем главную кнопку
+        tg.MainButton.text = "Подтвердить выбор";
+        tg.MainButton.hide();
         
         // Обновляем состояние главной кнопки
         function updateMainButton() {
-            if (selectedNumbers.size === 6) {
+            const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
+            if (allTicketsComplete) {
                 tg.MainButton.show();
             } else {
                 tg.MainButton.hide();
@@ -144,28 +257,26 @@
         
         // Обработчик нажатия на главную кнопку
         tg.MainButton.onClick(() => {
-            if (selectedNumbers.size === 6) {
-                const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
-                const tickets = JSON.parse(localStorage.getItem('lotteryTickets') || '[]');
-                tickets.push({
+            const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
+            if (allTicketsComplete) {
+                const ticketsData = tickets.map(numbers => ({
                     type: ticketType,
                     price: ticketPrice,
-                    numbers: selectedArray
-                });
+                    numbers: Array.from(numbers).sort((a, b) => a - b)
+                }));
                 
                 // Отправляем данные боту
                 tg.sendData(JSON.stringify({
                     action: 'create_stars_invoice',
-                    tickets: tickets,
-                    totalPrice: ticketPrice
+                    tickets: ticketsData,
+                    totalPrice: ticketPrice * tickets.length
                 }));
-                
-                // Очищаем хранилище
-                localStorage.removeItem('lotteryTickets');
             }
         });
         
         // Создаем сетку чисел
+        const numberGrid = document.getElementById('numberGrid');
+        
         for (let i = 1; i <= 36; i++) {
             const cell = document.createElement('div');
             cell.className = 'number-cell';
@@ -173,59 +284,43 @@
             cell.dataset.number = i;
             
             cell.addEventListener('click', function() {
+                const currentNumbers = tickets[currentTicketIndex];
+                
                 if (this.classList.contains('selected')) {
-                    // Если уже выбрано, снимаем выбор
                     this.classList.remove('selected');
-                    selectedNumbers.delete(parseInt(this.dataset.number));
+                    currentNumbers.delete(parseInt(this.dataset.number));
                 } else {
-                    // Если не выбрано и можно выбрать еще
-                    if (selectedNumbers.size < 6) {
+                    if (currentNumbers.size < 6) {
                         this.classList.add('selected');
-                        selectedNumbers.add(parseInt(this.dataset.number));
+                        currentNumbers.add(parseInt(this.dataset.number));
                     } else {
-                        // Если уже выбрано 6 чисел, показываем уведомление
                         tg.showAlert('Вы уже выбрали 6 чисел. Чтобы выбрать другое число, сначала отмените выбор одного из уже выбранных.');
                     }
                 }
                 
-                // Обновляем счетчик и состояние главной кнопки
-                document.getElementById('selectedCount').textContent = selectedNumbers.size;
+                document.getElementById('selectedCount').textContent = currentNumbers.size;
                 updateMainButton();
             });
             
             numberGrid.appendChild(cell);
         }
         
-        // Обработчик кнопки "Еще билет"
+        // Обработчик кнопки "Добавить билет"
         document.getElementById('addTicketBtn').addEventListener('click', function() {
-            // Если выбрано 6 чисел, сохраняем их и создаем новый билет
-            if (selectedNumbers.size === 6) {
-                // Здесь можно сохранить выбранные числа
-                const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
-                
-                // Сохраняем в localStorage или другом хранилище
-                const tickets = JSON.parse(localStorage.getItem('lotteryTickets') || '[]');
-                tickets.push({
-                    type: ticketType,
-                    price: ticketPrice,
-                    numbers: selectedArray
-                });
-                localStorage.setItem('lotteryTickets', JSON.stringify(tickets));
-                
-                // Очищаем выбор для нового билета
-                selectedNumbers.clear();
-                document.querySelectorAll('.number-cell.selected').forEach(cell => {
-                    cell.classList.remove('selected');
-                });
-                document.getElementById('selectedCount').textContent = 0;
-                updateMainButton();
-                
-                // Уведомляем пользователя
-                tg.showAlert('Билет добавлен! Выберите числа для следующего билета или перейдите к оплате.');
+            const currentNumbers = tickets[currentTicketIndex];
+            if (currentNumbers.size === 6) {
+                tickets.push(new Set());
+                currentTicketIndex = tickets.length - 1;
+                updateTicketDisplay();
+                updateNavigationButtons();
+                tg.showAlert('Создан новый билет. Выберите 6 чисел.');
             } else {
                 tg.showAlert('Пожалуйста, выберите 6 чисел для текущего билета.');
             }
         });
+
+        // Инициализация
+        updateNavigationButtons();
     </script>
 </body>
 </html> 
