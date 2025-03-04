@@ -201,11 +201,18 @@
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
+        tg.enableClosingConfirmation();
+        
+        // Настройка кнопки "Назад"
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            window.location.href = 'index.html';
+        });
         
         // Получаем параметры из URL
         const urlParams = new URLSearchParams(window.location.search);
-        const ticketType = urlParams.get('type');
-        let ticketPrice = urlParams.get('price');
+        const ticketType = urlParams.get('type') ? decodeURIComponent(urlParams.get('type')) : null;
+        let ticketPrice = urlParams.get('price') ? decodeURIComponent(urlParams.get('price')) : null;
 
         console.log('Получены параметры из URL:', { 
             ticketType: ticketType, 
@@ -217,9 +224,40 @@
         // Проверяем наличие параметров
         if (!ticketType || !ticketPrice) {
             console.error('Отсутствуют необходимые параметры в URL');
-            alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
-            window.location.href = 'index.html';
-            return;
+            
+            // Пробуем загрузить данные из localStorage как запасной вариант
+            try {
+                const savedTicketData = localStorage.getItem('currentTicket');
+                if (savedTicketData) {
+                    const ticketData = JSON.parse(savedTicketData);
+                    console.log('Загружены данные билета из localStorage:', ticketData);
+                    
+                    if (!ticketType && ticketData.type) {
+                        ticketType = ticketData.type;
+                    }
+                    
+                    if (!ticketPrice && ticketData.price) {
+                        ticketPrice = ticketData.price.toString();
+                    }
+                    
+                    if (ticketType && ticketPrice) {
+                        console.log('Восстановлены параметры из localStorage:', { ticketType, ticketPrice });
+                    } else {
+                        alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                } else {
+                    alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
+                    window.location.href = 'index.html';
+                    return;
+                }
+            } catch (error) {
+                console.error('Ошибка при загрузке данных из localStorage:', error);
+                alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
+                window.location.href = 'index.html';
+                return;
+            }
         }
 
         // Преобразуем цену в число
@@ -279,7 +317,7 @@
                             Выбрано: <span class="selected-count">0</span>/6
                         </div>
                         <div class="info-text">
-                            Тип билета: ${ticketType}, Цена: ${ticketPrice} Stars
+                            Тип билета: ${ticketType || 'Стандартный'}, Цена: ${ticketPrice || 1} Stars
                         </div>
                     </div>
                 `;
@@ -390,6 +428,12 @@
         function updateTotalPrice() {
             const totalStars = tickets.length * ticketPrice;
             const totalPriceElement = document.getElementById('totalPrice');
+            
+            if (!totalPriceElement) {
+                console.error('Не найден элемент для отображения общей стоимости');
+                return;
+            }
+            
             totalPriceElement.textContent = `Итого: ${totalStars} Stars`;
             totalPriceElement.style.display = tickets.length > 1 ? 'block' : 'none';
 
@@ -424,8 +468,8 @@
             const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
             if (allTicketsComplete) {
                 const ticketsData = tickets.map(numbers => ({
-                    type: ticketType,
-                    price: ticketPrice,
+                    type: ticketType || 'Стандартный',
+                    price: ticketPrice || 1,
                     numbers: Array.from(numbers).sort((a, b) => a - b)
                 }));
                 
@@ -439,18 +483,23 @@
 
         // Обработчик кнопки "Добавить билет"
         document.getElementById('addTicketBtn').addEventListener('click', function() {
-            const currentNumbers = tickets[currentTicketIndex];
-            if (currentNumbers.size === 6) {
-                tickets.push(new Set());
-                createTicketSlide(tickets.length - 1);
-                currentTicketIndex = tickets.length - 1;
-                const container = document.getElementById('ticketsContainer');
-                container.style.transform = `translateX(-${currentTicketIndex * 100}%)`;
-                updatePaginationDots();
-                updateTotalPrice();
-                tg.showAlert('Создан новый билет. Выберите 6 чисел.');
-            } else {
-                tg.showAlert('Пожалуйста, выберите 6 чисел для текущего билета.');
+            try {
+                const currentNumbers = tickets[currentTicketIndex];
+                if (currentNumbers.size === 6) {
+                    tickets.push(new Set());
+                    createTicketSlide(tickets.length - 1);
+                    currentTicketIndex = tickets.length - 1;
+                    const container = document.getElementById('ticketsContainer');
+                    container.style.transform = `translateX(-${currentTicketIndex * 100}%)`;
+                    updatePaginationDots();
+                    updateTotalPrice();
+                    tg.showAlert('Создан новый билет. Выберите 6 чисел.');
+                } else {
+                    tg.showAlert('Пожалуйста, выберите 6 чисел для текущего билета.');
+                }
+            } catch (error) {
+                console.error('Ошибка при добавлении билета:', error);
+                tg.showAlert('Произошла ошибка при добавлении билета. Пожалуйста, попробуйте еще раз.');
             }
         });
     </script>

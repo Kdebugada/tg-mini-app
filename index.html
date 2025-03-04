@@ -168,8 +168,8 @@
                 
                 // Создаем URL для страницы выбора номеров с корректным кодированием
                 const params = new URLSearchParams();
-                params.append('type', ticketType);
-                params.append('price', price.toString());
+                params.append('type', encodeURIComponent(ticketType));
+                params.append('price', encodeURIComponent(price.toString()));
                 const number_selection_url = `number_selection.html?${params.toString()}`;
                 
                 console.log('Сформированный URL:', number_selection_url);
