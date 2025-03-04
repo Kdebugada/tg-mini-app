@@ -210,33 +210,24 @@
         console.log('Получены параметры из URL:', { 
             ticketType: ticketType, 
             ticketPrice: ticketPrice,
-            ticketPriceType: typeof ticketPrice 
+            ticketPriceType: typeof ticketPrice,
+            rawSearch: window.location.search
         });
 
         // Проверяем наличие параметров
         if (!ticketType || !ticketPrice) {
             console.error('Отсутствуют необходимые параметры в URL');
             alert('Ошибка: отсутствуют необходимые параметры. Вернитесь на главную страницу.');
+            window.location.href = 'index.html';
             return;
         }
 
-        // Специальная обработка для стандартного билета
-        if (ticketType === 'Стандартный') {
-            console.log('Обработка стандартного билета');
-            // Преобразуем цену в число
-            ticketPrice = parseInt(ticketPrice, 10);
-            if (isNaN(ticketPrice)) {
-                console.warn('Цена стандартного билета не является числом, устанавливаем значение по умолчанию: 1');
-                ticketPrice = 1;
-            }
-        } else {
-            // Для других типов билетов преобразуем цену в число
-            ticketPrice = parseInt(ticketPrice, 10);
-            if (isNaN(ticketPrice)) {
-                console.error('Цена билета не является числом');
-                alert('Ошибка: некорректная цена билета. Вернитесь на главную страницу.');
-                return;
-            }
+        // Преобразуем цену в число
+        ticketPrice = parseInt(ticketPrice, 10);
+        if (isNaN(ticketPrice)) {
+            console.error('Цена билета не является числом:', ticketPrice);
+            ticketPrice = 1; // Устанавливаем значение по умолчанию
+            console.log('Установлено значение по умолчанию:', ticketPrice);
         }
 
         console.log('После обработки:', { 
@@ -251,13 +242,6 @@
             if (savedTicketData) {
                 const ticketData = JSON.parse(savedTicketData);
                 console.log('Загружены данные билета из localStorage:', ticketData);
-                
-                // Если данные в URL и localStorage не совпадают, используем данные из URL
-                if (ticketData.type !== ticketType || ticketData.price !== ticketPrice) {
-                    console.warn('Данные в URL и localStorage не совпадают, используем данные из URL');
-                }
-            } else {
-                console.log('Данные о билете в localStorage отсутствуют, используем данные из URL');
             }
         } catch (error) {
             console.error('Ошибка при загрузке данных билета из localStorage:', error);
