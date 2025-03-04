@@ -207,6 +207,12 @@
         const ticketType = urlParams.get('type');
         const ticketPrice = parseInt(urlParams.get('price'));
 
+        console.log('Получены параметры URL:', {
+            search: window.location.search,
+            type: ticketType,
+            price: ticketPrice
+        });
+
         // Проверяем наличие параметров
         if (!ticketType || isNaN(ticketPrice)) {
             console.error('Ошибка: отсутствуют необходимые параметры', {
@@ -238,9 +244,12 @@
         tickets.push(new Set());
         createTicketSlide(0);
         updatePaginationDots();
+        updateTotalPrice();
 
         // Функция создания слайда билета
         function createTicketSlide(index) {
+            console.log('Создание слайда билета:', { index, ticketType, ticketPrice });
+            
             const ticketSlide = document.createElement('div');
             ticketSlide.className = 'ticket-slide';
             ticketSlide.innerHTML = `
@@ -289,6 +298,11 @@
         // Обновление отображения билета
         function updateTicketDisplay(index) {
             const ticketSlide = document.querySelectorAll('.ticket-slide')[index];
+            if (!ticketSlide) {
+                console.error('Не найден слайд билета:', index);
+                return;
+            }
+
             const currentNumbers = tickets[index];
             
             ticketSlide.querySelectorAll('.number-cell').forEach(cell => {

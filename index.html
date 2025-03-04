@@ -164,14 +164,18 @@
                 // Создаем URL для страницы выбора номеров с корректным кодированием
                 const params = new URLSearchParams();
                 params.append('type', ticketType);
-                params.append('price', price);
+                params.append('price', price.toString());
                 const number_selection_url = `number_selection.html?${params.toString()}`;
                 
+                console.log('Сформированный URL:', number_selection_url);
+
                 // Сохраняем данные о билете
-                localStorage.setItem('currentTicket', JSON.stringify({
+                const ticketData = {
                     type: ticketType,
                     price: price
-                }));
+                };
+                localStorage.setItem('currentTicket', JSON.stringify(ticketData));
+                console.log('Сохранены данные билета:', ticketData);
                 
                 // Переходим на страницу выбора номеров
                 window.location.href = number_selection_url;
