@@ -518,61 +518,12 @@
                     
                     console.log('Отправляем данные для оплаты в Stars:', dataToSend);
                     
-                    // Вместо отправки данных боту, напрямую вызываем метод openInvoice
-                    // Это позволит открыть окно оплаты Telegram Stars непосредственно из приложения
-                    try {
-                        // Проверяем, поддерживается ли метод openInvoice
-                        if (tg.isVersionAtLeast('6.1') && tg.hasOpenInvoice) {
-                            // Создаем параметры для счета
-                            const invoiceParams = {
-                                title: `Покупка ${tickets.length} ${tickets.length === 1 ? 'билета' : 'билетов'} лотереи`,
-                                description: `Тип: ${finalTicketType}, Номера: ${ticketsData.map(t => t.numbers.join(', ')).join(' | ')}`,
-                                currency: 'XTR',
-                                prices: [{
-                                    label: `${tickets.length} ${tickets.length === 1 ? 'билет' : 'билетов'} x ${finalTicketPrice}`,
-                                    amount: finalTicketPrice * tickets.length * 100 // в копейках
-                                }],
-                                payload: JSON.stringify({
-                                    ticket_type: finalTicketType,
-                                    ticket_count: tickets.length,
-                                    selected_numbers: ticketsData.map(t => t.numbers)
-                                }),
-                                provider_token: '' // Пустая строка для Stars
-                            };
-                            
-                            console.log('Открываем счет с параметрами:', invoiceParams);
-                            
-                            // Открываем счет
-                            tg.openInvoice(invoiceParams, (status) => {
-                                console.log('Статус оплаты:', status);
-                                if (status === 'paid') {
-                                    tg.showAlert('Билеты успешно куплены! Stars списаны.');
-                                    // Можно перенаправить на страницу результатов
-                                    // window.location.href = 'results.html';
-                                } else {
-                                    tg.showAlert('Оплата не была завершена. Вы можете попробовать снова или выбрать другие номера.');
-                                }
-                            });
-                        } else {
-                            // Если метод не поддерживается, отправляем данные боту
-                            console.log('Метод openInvoice не поддерживается, отправляем данные боту');
-                            tg.sendData(JSON.stringify(dataToSend));
-                            
-                            // Показываем уведомление пользователю
-                            tg.showPopup({
-                                title: 'Переход к оплате',
-                                message: `Вы будете перенаправлены на страницу оплаты ${tickets.length} ${tickets.length === 1 ? 'билета' : 'билетов'} за ${finalTicketPrice * tickets.length} Stars.`,
-                                buttons: [
-                                    {text: 'OK', type: 'ok'}
-                                ]
-                            });
-                        }
-                    } catch (invoiceError) {
-                        console.error('Ошибка при открытии счета:', invoiceError);
-                        // Если произошла ошибка при открытии счета, отправляем данные боту
-                        tg.sendData(JSON.stringify(dataToSend));
-                        tg.showAlert('Произошла ошибка при открытии окна оплаты. Пожалуйста, попробуйте еще раз.');
-                    }
+                    // Используем простой и надежный способ - отправляем данные боту
+                    // Бот сам создаст счет и отправит его пользователю
+                    tg.sendData(JSON.stringify(dataToSend));
+                    
+                    // Показываем уведомление пользователю
+                    tg.showAlert('Данные отправлены. Ожидайте создания счета для оплаты.');
                 } else {
                     // Находим индексы незаполненных билетов
                     const incompleteTickets = tickets.map((ticket, index) => 
