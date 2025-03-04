@@ -502,28 +502,28 @@
                         numbers: Array.from(numbers).sort((a, b) => a - b)
                     }));
                     
-                    // Формируем данные для создания счета в Stars
+                    // Формируем данные для отправки боту
                     const dataToSend = {
-                        action: 'create_stars_invoice',
+                        action: 'send_invoice_to_bot',
                         tickets: ticketsData,
                         totalPrice: finalTicketPrice * tickets.length,
-                        currency: 'XTR', // Валюта Telegram Stars
-                        description: `Покупка ${tickets.length} ${tickets.length === 1 ? 'билета' : 'билетов'} типа "${finalTicketType}"`,
-                        payload: JSON.stringify({
-                            ticket_type: finalTicketType,
-                            ticket_count: tickets.length,
-                            selected_numbers: ticketsData.map(t => t.numbers)
-                        })
+                        ticketType: finalTicketType,
+                        ticketCount: tickets.length,
+                        selectedNumbers: ticketsData.map(t => t.numbers)
                     };
                     
-                    console.log('Отправляем данные для оплаты в Stars:', dataToSend);
+                    console.log('Отправляем данные боту для создания чека:', dataToSend);
                     
-                    // Используем простой и надежный способ - отправляем данные боту
-                    // Бот сам создаст счет и отправит его пользователю
+                    // Отправляем данные боту
                     tg.sendData(JSON.stringify(dataToSend));
                     
                     // Показываем уведомление пользователю
-                    tg.showAlert('Данные отправлены. Ожидайте создания счета для оплаты.');
+                    tg.showAlert('Данные отправлены. Проверьте сообщения от бота для оплаты.');
+                    
+                    // Закрываем мини-приложение после отправки данных
+                    setTimeout(() => {
+                        tg.close();
+                    }, 1500);
                 } else {
                     // Находим индексы незаполненных билетов
                     const incompleteTickets = tickets.map((ticket, index) => 
@@ -563,25 +563,6 @@
             } catch (error) {
                 console.error('Ошибка при отправке данных:', error);
                 tg.showAlert('Произошла ошибка при отправке данных. Пожалуйста, попробуйте еще раз.');
-            }
-        });
-
-        // Обработчик для получения invoice_url от бота
-        tg.onEvent('invoiceOpened', function(data) {
-            console.log('Invoice opened:', data);
-            // Сохраняем URL счета, полученный от бота
-            window.invoiceUrl = data.invoice_url;
-        });
-        
-        // Обработчик закрытия счета
-        tg.onEvent('invoiceClosed', function(data) {
-            console.log('Invoice closed:', data);
-            if (data.status === 'paid') {
-                tg.showAlert('Билеты успешно куплены! Stars списаны.');
-                // Перенаправляем на страницу с результатами или другую страницу
-                // window.location.href = 'results.html';
-            } else {
-                tg.showAlert('Оплата не была завершена. Вы можете попробовать снова или выбрать другие номера.');
             }
         });
 
