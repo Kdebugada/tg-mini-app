@@ -158,26 +158,17 @@
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
             try {
-                console.log('Отправка данных:', { action: 'open_number_selection', price, ticketType });
+                console.log('Открытие страницы выбора номеров:', { price, ticketType });
                 
-                // Отправляем данные боту
-                tg.sendData(JSON.stringify({
-                    action: 'open_number_selection',
-                    price: price,
-                    ticketType: ticketType
-                }));
-
-                // Показываем индикатор загрузки
-                tg.MainButton.showProgress();
+                // Создаем URL для страницы выбора номеров
+                const number_selection_url = `number_selection.html?type=${encodeURIComponent(ticketType)}&price=${encodeURIComponent(price)}`;
                 
-                // Через 1 секунду скрываем индикатор загрузки
-                setTimeout(() => {
-                    tg.MainButton.hideProgress();
-                }, 1000);
+                // Открываем страницу выбора номеров
+                tg.openLink(number_selection_url);
 
             } catch (error) {
-                console.error('Ошибка при отправке данных:', error);
-                tg.showAlert('Произошла ошибка при обработке запроса. Пожалуйста, попробуйте еще раз.');
+                console.error('Ошибка при открытии страницы:', error);
+                tg.showAlert('Произошла ошибка. Пожалуйста, попробуйте еще раз.');
             }
         }
         
