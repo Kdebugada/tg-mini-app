@@ -119,7 +119,7 @@
             <div class="ticket">
                 <h3>Стандартный билет</h3>
                 <img src="./foto/loto_glav_menu.jpg" alt="Стандартный билет" class="ticket-image">
-                <button class="button" onclick="buyWithStars(1, 'Стандартный')">Купить за 1 Stars</button>
+                <button class="button" onclick="buyStandardTicket()">Купить за 1 Stars</button>
             </div>
             
             <div class="ticket">
@@ -156,10 +156,50 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
+        // Функция для стандартного билета
+        function buyStandardTicket() {
+            try {
+                console.log('Переход к выбору номеров для стандартного билета');
+                
+                // Создаем URL для страницы выбора номеров с корректным кодированием
+                const params = new URLSearchParams();
+                params.append('type', 'Стандартный');
+                params.append('price', '1');
+                const number_selection_url = `number_selection.html?${params.toString()}`;
+                
+                console.log('Сформированный URL для стандартного билета:', number_selection_url);
+
+                // Сохраняем данные о билете
+                const ticketData = {
+                    type: 'Стандартный',
+                    price: 1
+                };
+                localStorage.setItem('currentTicket', JSON.stringify(ticketData));
+                console.log('Сохранены данные стандартного билета:', ticketData);
+                
+                // Переходим на страницу выбора номеров
+                window.location.href = number_selection_url;
+
+            } catch (error) {
+                console.error('Ошибка при переходе к выбору номеров для стандартного билета:', error);
+                tg.showAlert('Произошла ошибка. Пожалуйста, попробуйте еще раз.');
+            }
+        }
+
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
             try {
-                console.log('Переход к выбору номеров:', { price, ticketType });
+                console.log('Переход к выбору номеров:', { price, ticketType, priceType: typeof price });
+                
+                // Для стандартного билета добавляем дополнительное логирование
+                if (ticketType === 'Стандартный') {
+                    console.log('Обработка стандартного билета:', { 
+                        price: price,
+                        priceType: typeof price,
+                        priceToString: price.toString(),
+                        ticketType: ticketType
+                    });
+                }
                 
                 // Создаем URL для страницы выбора номеров с корректным кодированием
                 const params = new URLSearchParams();
