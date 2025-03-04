@@ -34,12 +34,15 @@
             max-width: 100%;
             margin: 0 auto;
             overflow: hidden;
+            position: relative;
         }
 
         .tickets-container {
             display: flex;
             transition: transform 0.3s ease-out;
             width: 100%;
+            position: relative;
+            left: 0;
         }
 
         .ticket-slide {
@@ -47,6 +50,9 @@
             flex-shrink: 0;
             padding: 0 20px;
             box-sizing: border-box;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .card {
@@ -57,6 +63,8 @@
             backdrop-filter: blur(5px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             position: relative;
+            width: 100%;
+            max-width: 500px;
         }
 
         h2 {
@@ -152,19 +160,22 @@
             justify-content: center;
             gap: 8px;
             margin-top: 15px;
+            margin-bottom: 15px;
         }
 
         .dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.3);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .dot.active {
             background: rgba(52, 152, 219, 0.8);
-            transform: scale(1.2);
+            transform: scale(1.3);
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
         }
 
         @keyframes slideIn {
@@ -363,41 +374,65 @@
             tickets.forEach((_, index) => {
                 const dot = document.createElement('div');
                 dot.className = `dot ${index === currentTicketIndex ? 'active' : ''}`;
+                
+                // Добавляем обработчик клика для переключения на соответствующий билет
+                dot.addEventListener('click', () => {
+                    // Переключаемся на выбранный билет
+                    currentTicketIndex = index;
+                    
+                    // Обновляем положение контейнера
+                    const container = document.getElementById('ticketsContainer');
+                    container.style.transition = 'transform 0.3s ease-out';
+                    container.style.transform = `translateX(-${currentTicketIndex * 100}%)`;
+                    
+                    // Обновляем точки пагинации
+                    updatePaginationDots();
+                });
+                
                 dotsContainer.appendChild(dot);
             });
         }
 
         // Обработка свайпов
         document.getElementById('ticketsContainer').addEventListener('touchstart', e => {
+            // Запоминаем начальную позицию касания
             touchStartX = e.touches[0].clientX;
         });
 
         document.getElementById('ticketsContainer').addEventListener('touchmove', e => {
+            // Получаем текущую позицию касания
             touchEndX = e.touches[0].clientX;
+            // Вычисляем разницу между начальной и текущей позицией
             const diff = touchStartX - touchEndX;
             const container = document.getElementById('ticketsContainer');
+            // Вычисляем текущее смещение контейнера
             const currentTransform = -currentTicketIndex * 100;
             
-            if (Math.abs(diff) < window.innerWidth) {
+            // Ограничиваем смещение при свайпе
+            if (Math.abs(diff) < window.innerWidth / 2) {
                 container.style.transform = `translateX(calc(${currentTransform}% - ${diff}px))`;
             }
         });
 
         document.getElementById('ticketsContainer').addEventListener('touchend', e => {
+            // Вычисляем итоговую разницу между начальной и конечной позицией
             const diff = touchStartX - touchEndX;
             const container = document.getElementById('ticketsContainer');
             
+            // Если свайп был достаточно длинным, переключаем билет
             if (Math.abs(diff) > 50) { // Минимальное расстояние для свайпа
                 if (diff > 0 && currentTicketIndex < tickets.length - 1) {
-                    // Свайп влево
+                    // Свайп влево - следующий билет
                     currentTicketIndex++;
                 } else if (diff < 0 && currentTicketIndex > 0) {
-                    // Свайп вправо
+                    // Свайп вправо - предыдущий билет
                     currentTicketIndex--;
                 }
             }
             
+            // Устанавливаем новую позицию контейнера
             container.style.transform = `translateX(-${currentTicketIndex * 100}%)`;
+            // Обновляем точки пагинации и общую стоимость
             updatePaginationDots();
             updateTotalPrice();
         });
@@ -496,8 +531,9 @@
                     // Переключаемся на новый билет
                     currentTicketIndex = tickets.length - 1;
                     
-                    // Обновляем положение контейнера
+                    // Обновляем положение контейнера с плавной анимацией
                     const container = document.getElementById('ticketsContainer');
+                    container.style.transition = 'transform 0.3s ease-out';
                     container.style.transform = `translateX(-${currentTicketIndex * 100}%)`;
                     
                     // Обновляем точки пагинации и общую стоимость
@@ -508,6 +544,13 @@
                     tg.showAlert('Создан новый билет. Выберите 6 чисел.');
                     
                     console.log('Добавлен новый билет, всего билетов:', tickets.length);
+                    
+                    // Добавляем обработчик для центрирования после завершения анимации
+                    setTimeout(() => {
+                        // Проверяем, что все элементы корректно отображаются
+                        const allSlides = document.querySelectorAll('.ticket-slide');
+                        console.log('Количество слайдов:', allSlides.length);
+                    }, 300);
                 } else {
                     // Показываем предупреждение, если не выбрано 6 номеров
                     tg.showAlert('Пожалуйста, выберите 6 чисел для текущего билета.');
