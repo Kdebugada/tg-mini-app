@@ -3,6 +3,7 @@
 <head>
     <title>Мини приложение</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="telegram-web-app-ready" content="true">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -158,16 +159,22 @@
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
             try {
-                console.log('Открытие страницы выбора номеров:', { price, ticketType });
+                console.log('Переход к выбору номеров:', { price, ticketType });
                 
                 // Создаем URL для страницы выбора номеров
                 const number_selection_url = `number_selection.html?type=${encodeURIComponent(ticketType)}&price=${encodeURIComponent(price)}`;
                 
-                // Открываем страницу выбора номеров
-                tg.openLink(number_selection_url);
+                // Сохраняем данные о билете
+                localStorage.setItem('currentTicket', JSON.stringify({
+                    type: ticketType,
+                    price: price
+                }));
+                
+                // Переходим на страницу выбора номеров
+                window.location.href = number_selection_url;
 
             } catch (error) {
-                console.error('Ошибка при открытии страницы:', error);
+                console.error('Ошибка при переходе к выбору номеров:', error);
                 tg.showAlert('Произошла ошибка. Пожалуйста, попробуйте еще раз.');
             }
         }
@@ -191,6 +198,9 @@
 
         // Инициализация после загрузки страницы
         document.addEventListener('DOMContentLoaded', function() {
+            // Скрываем кнопку "Назад", так как это главная страница
+            tg.BackButton.hide();
+            
             // Добавляем обработчики для всех кнопок
             document.querySelectorAll('.button').forEach(button => {
                 button.addEventListener('click', function() {

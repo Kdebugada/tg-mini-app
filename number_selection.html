@@ -71,34 +71,6 @@
             font-weight: bold;
         }
 
-        .button {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--tg-theme-button-text-color);
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            width: 100%;
-            margin: 10px 0;
-            cursor: pointer;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
-            font-size: 16px;
-        }
-
-        .button:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .button-primary {
-            background: var(--tg-theme-button-color, #3498db);
-            color: var(--tg-theme-button-text-color, white);
-        }
-
-        .button-primary:hover {
-            background: var(--tg-theme-button-color, #2980b9);
-            opacity: 0.9;
-        }
-
         .selected-numbers {
             text-align: center;
             margin: 15px 0;
@@ -130,15 +102,22 @@
             <div class="info-text" id="ticketInfo">
                 Тип билета: <span id="ticketType">Стандартный</span>, Цена: <span id="ticketPrice">1</span> Stars
             </div>
-            
-            <button class="button" id="addTicketBtn">Еще билет</button>
-            <button class="button button-primary" id="payBtn" disabled>Оплатить (1 Stars)</button>
         </div>
     </div>
 
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand();
+        
+        // Настраиваем кнопку "Назад"
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            window.location.href = 'index.html';
+        });
+
+        // Настраиваем главную кнопку
+        tg.MainButton.text = "Подтвердить выбор";
+        tg.MainButton.hide();
         
         // Получаем параметры из URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -154,6 +133,39 @@
         const numberGrid = document.getElementById('numberGrid');
         const selectedNumbers = new Set();
         
+        // Обновляем состояние главной кнопки
+        function updateMainButton() {
+            if (selectedNumbers.size === 6) {
+                tg.MainButton.show();
+            } else {
+                tg.MainButton.hide();
+            }
+        }
+        
+        // Обработчик нажатия на главную кнопку
+        tg.MainButton.onClick(() => {
+            if (selectedNumbers.size === 6) {
+                const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
+                const tickets = JSON.parse(localStorage.getItem('lotteryTickets') || '[]');
+                tickets.push({
+                    type: ticketType,
+                    price: ticketPrice,
+                    numbers: selectedArray
+                });
+                
+                // Отправляем данные боту
+                tg.sendData(JSON.stringify({
+                    action: 'create_stars_invoice',
+                    tickets: tickets,
+                    totalPrice: ticketPrice
+                }));
+                
+                // Очищаем хранилище
+                localStorage.removeItem('lotteryTickets');
+            }
+        });
+        
+        // Создаем сетку чисел
         for (let i = 1; i <= 36; i++) {
             const cell = document.createElement('div');
             cell.className = 'number-cell';
@@ -176,20 +188,12 @@
                     }
                 }
                 
-                // Обновляем счетчик и состояние кнопки оплаты
-                updateSelectedCount();
+                // Обновляем счетчик и состояние главной кнопки
+                document.getElementById('selectedCount').textContent = selectedNumbers.size;
+                updateMainButton();
             });
             
             numberGrid.appendChild(cell);
-        }
-        
-        // Функция обновления счетчика выбранных чисел
-        function updateSelectedCount() {
-            const count = selectedNumbers.size;
-            document.getElementById('selectedCount').textContent = count;
-            
-            // Активируем кнопку оплаты, только если выбрано ровно 6 чисел
-            document.getElementById('payBtn').disabled = count !== 6;
         }
         
         // Обработчик кнопки "Еще билет"
@@ -213,44 +217,13 @@
                 document.querySelectorAll('.number-cell.selected').forEach(cell => {
                     cell.classList.remove('selected');
                 });
-                updateSelectedCount();
+                document.getElementById('selectedCount').textContent = 0;
+                updateMainButton();
                 
                 // Уведомляем пользователя
                 tg.showAlert('Билет добавлен! Выберите числа для следующего билета или перейдите к оплате.');
             } else {
                 tg.showAlert('Пожалуйста, выберите 6 чисел для текущего билета.');
-            }
-        });
-        
-        // Обработчик кнопки "Оплатить"
-        document.getElementById('payBtn').addEventListener('click', function() {
-            if (selectedNumbers.size === 6) {
-                // Добавляем текущий билет
-                const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
-                const tickets = JSON.parse(localStorage.getItem('lotteryTickets') || '[]');
-                tickets.push({
-                    type: ticketType,
-                    price: ticketPrice,
-                    numbers: selectedArray
-                });
-                
-                // Рассчитываем общую стоимость
-                const totalPrice = tickets.reduce((sum, ticket) => sum + ticket.price, 0);
-                
-                // Отправляем данные боту
-                tg.sendData(JSON.stringify({
-                    action: 'create_stars_invoice',
-                    tickets: tickets,
-                    totalPrice: totalPrice
-                }));
-                
-                // Очищаем хранилище после отправки
-                localStorage.removeItem('lotteryTickets');
-                
-                // Показываем сообщение пользователю
-                tg.showAlert('Запрос на покупку отправлен!');
-            } else {
-                tg.showAlert('Пожалуйста, выберите 6 чисел для билета.');
             }
         });
     </script>

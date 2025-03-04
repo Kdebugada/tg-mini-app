@@ -132,7 +132,7 @@ async def web_app_data(message: types.Message):
             # Создаем URL для веб-приложения с выбором номеров
             number_selection_url = f"{WEBAPP_URL}number_selection.html?type={ticket_type}&price={price}"
             
-            # Отправляем пользователю кнопку для открытия страницы выбора номеров
+            # Отправляем пользователю кнопку для открытия страницы выбора номеров в том же мини-приложении
             keyboard = InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(
                     text=f"Выбрать номера для {ticket_type} билета",
