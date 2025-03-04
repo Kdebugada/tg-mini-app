@@ -115,15 +115,15 @@
 <body>
     <div class="container">
         <div class="card">
-            <h2>Выберите 8 номеров</h2>
-            <div class="info-text">Выберите 8 чисел от 1 до 36</div>
+            <h2>Выберите 6 номеров</h2>
+            <div class="info-text">Выберите 6 чисел от 1 до 36</div>
             
             <div class="number-grid" id="numberGrid">
                 <!-- Числа будут добавлены с помощью JavaScript -->
             </div>
             
             <div class="selected-numbers">
-                Выбрано: <span id="selectedCount">0</span>/8
+                Выбрано: <span id="selectedCount">0</span>/6
             </div>
             
             <div class="info-text" id="ticketInfo">
@@ -166,12 +166,12 @@
                     selectedNumbers.delete(parseInt(this.dataset.number));
                 } else {
                     // Если не выбрано и можно выбрать еще
-                    if (selectedNumbers.size < 8) {
+                    if (selectedNumbers.size < 6) {
                         this.classList.add('selected');
                         selectedNumbers.add(parseInt(this.dataset.number));
                     } else {
-                        // Если уже выбрано 8 чисел, показываем уведомление
-                        tg.showAlert('Вы уже выбрали 8 чисел. Чтобы выбрать другое число, сначала отмените выбор одного из уже выбранных.');
+                        // Если уже выбрано 6 чисел, показываем уведомление
+                        tg.showAlert('Вы уже выбрали 6 чисел. Чтобы выбрать другое число, сначала отмените выбор одного из уже выбранных.');
                     }
                 }
                 
@@ -187,14 +187,14 @@
             const count = selectedNumbers.size;
             document.getElementById('selectedCount').textContent = count;
             
-            // Активируем кнопку оплаты, только если выбрано ровно 8 чисел
-            document.getElementById('payBtn').disabled = count !== 8;
+            // Активируем кнопку оплаты, только если выбрано ровно 6 чисел
+            document.getElementById('payBtn').disabled = count !== 6;
         }
         
         // Обработчик кнопки "Еще билет"
         document.getElementById('addTicketBtn').addEventListener('click', function() {
-            // Если выбрано 8 чисел, сохраняем их и создаем новый билет
-            if (selectedNumbers.size === 8) {
+            // Если выбрано 6 чисел, сохраняем их и создаем новый билет
+            if (selectedNumbers.size === 6) {
                 // Здесь можно сохранить выбранные числа
                 const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
                 
@@ -217,13 +217,13 @@
                 // Уведомляем пользователя
                 tg.showAlert('Билет добавлен! Выберите числа для следующего билета или перейдите к оплате.');
             } else {
-                tg.showAlert('Пожалуйста, выберите 8 чисел для текущего билета.');
+                tg.showAlert('Пожалуйста, выберите 6 чисел для текущего билета.');
             }
         });
         
         // Обработчик кнопки "Оплатить"
         document.getElementById('payBtn').addEventListener('click', function() {
-            if (selectedNumbers.size === 8) {
+            if (selectedNumbers.size === 6) {
                 // Добавляем текущий билет
                 const selectedArray = Array.from(selectedNumbers).sort((a, b) => a - b);
                 const tickets = JSON.parse(localStorage.getItem('lotteryTickets') || '[]');
@@ -249,7 +249,7 @@
                 // Показываем сообщение пользователю
                 tg.showAlert('Запрос на покупку отправлен!');
             } else {
-                tg.showAlert('Пожалуйста, выберите 8 чисел для билета.');
+                tg.showAlert('Пожалуйста, выберите 6 чисел для билета.');
             }
         });
     </script>

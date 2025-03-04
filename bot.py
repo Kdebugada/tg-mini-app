@@ -139,7 +139,7 @@ async def web_app_data(message: types.Message):
             ))
             
             await message.answer(
-                f"Выберите 8 номеров для вашего {ticket_type} билета (цена: {price} Stars):",
+                f"Выберите 6 номеров для вашего {ticket_type} билета (цена: {price} Stars):",
                 reply_markup=keyboard
             )
         elif data.get('action') == 'create_stars_invoice':
