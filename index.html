@@ -29,20 +29,47 @@
         }
 
         .button {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--tg-theme-button-text-color);
+            background: var(--tg-theme-button-color, rgba(255, 255, 255, 0.1));
+            color: var(--tg-theme-button-text-color, #ffffff);
             border: none;
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 8px;
             width: 100%;
             margin: 10px 0;
             cursor: pointer;
             backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            font-size: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .button:active {
+            transform: scale(0.98);
+            opacity: 0.8;
         }
 
         .button:hover {
+            background: var(--tg-theme-button-color, rgba(255, 255, 255, 0.2));
+            opacity: 0.9;
+        }
+
+        .button:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
             background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .button:active:before {
+            width: 200px;
+            height: 200px;
         }
 
         .card {
@@ -117,33 +144,72 @@
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand(); // Раскрываем на всю высоту
+        tg.enableClosingConfirmation();
+
+        // Устанавливаем основной цвет
+        document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#2cab37');
+        document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
 
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
-            // Отправляем данные боту напрямую для создания страницы выбора номеров
-            tg.sendData(JSON.stringify({
-                action: 'open_number_selection',
-                price: price,
-                ticketType: ticketType
-            }));
+            try {
+                console.log('Отправка данных:', { action: 'open_number_selection', price, ticketType });
+                
+                // Отправляем данные боту
+                tg.sendData(JSON.stringify({
+                    action: 'open_number_selection',
+                    price: price,
+                    ticketType: ticketType
+                }));
+
+                // Показываем индикатор загрузки
+                tg.MainButton.showProgress();
+                
+                // Через 1 секунду скрываем индикатор загрузки
+                setTimeout(() => {
+                    tg.MainButton.hideProgress();
+                }, 1000);
+
+            } catch (error) {
+                console.error('Ошибка при отправке данных:', error);
+                tg.showAlert('Произошла ошибка при обработке запроса. Пожалуйста, попробуйте еще раз.');
+            }
         }
         
         // Обработчик для получения invoice_url от бота
         tg.onEvent('invoiceOpened', function(data) {
+            console.log('Invoice opened:', data);
             // Сохраняем URL счета, полученный от бота
             window.invoiceUrl = data.invoice_url;
         });
         
         // Обработчик закрытия счета
         tg.onEvent('invoiceClosed', function(data) {
+            console.log('Invoice closed:', data);
             if (data.status === 'paid') {
                 tg.showAlert('Билет успешно куплен! Stars списаны.');
             } else {
                 tg.showAlert('Оплата не была завершена.');
             }
+        });
+
+        // Инициализация после загрузки страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Добавляем обработчики для всех кнопок
+            document.querySelectorAll('.button').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Добавляем эффект нажатия
+                    this.style.opacity = '0.8';
+                    setTimeout(() => {
+                        this.style.opacity = '1';
+                    }, 100);
+                });
+            });
         });
     </script>
 </body>
