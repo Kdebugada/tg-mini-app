@@ -2,10 +2,10 @@ import os
 import json
 import uuid
 import logging
-from aiogram import Bot, Dispatcher, types
+import asyncio
+from aiogram import Bot, Dispatcher, types, F
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice, PreCheckoutQuery
-from aiogram.utils import executor
-from aiogram.dispatcher.filters import Command
+from aiogram.filters import Command
 from aiogram.types.web_app_info import WebAppInfo
 
 # Настройка логирования
@@ -51,17 +51,18 @@ TICKET_TYPES = {
 
 # Инициализация бота и диспетчера
 bot = Bot(token=TOKEN)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 # Хранилище для данных пользователей
 user_data = {}
 
 # Обработчик команды /start
-@dp.message_handler(Command("start"))
+@dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Отправляет приветственное сообщение и кнопку для запуска веб-приложения."""
-    keyboard = InlineKeyboardMarkup()
-    keyboard.add(InlineKeyboardButton("Открыть лотерею", web_app=WebAppInfo(url=WEBAPP_URL)))
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="Открыть лотерею", web_app=WebAppInfo(url=WEBAPP_URL))
+    ]])
     
     await message.answer(
         "Привет! Я бот для лотереи. Нажмите кнопку ниже, чтобы открыть приложение:",
@@ -69,7 +70,7 @@ async def cmd_start(message: types.Message):
     )
 
 # Обработчик команды /terms
-@dp.message_handler(Command("terms"))
+@dp.message(Command("terms"))
 async def cmd_terms(message: types.Message):
     """Отправляет пользователю условия использования."""
     await message.answer(
@@ -82,7 +83,7 @@ async def cmd_terms(message: types.Message):
     )
 
 # Обработчик команды /support
-@dp.message_handler(Command("support"))
+@dp.message(Command("support"))
 async def cmd_support(message: types.Message):
     """Отправляет пользователю информацию о поддержке."""
     await message.answer(
@@ -92,7 +93,7 @@ async def cmd_support(message: types.Message):
     )
 
 # Обработчик команды /paysupport
-@dp.message_handler(Command("paysupport"))
+@dp.message(Command("paysupport"))
 async def cmd_paysupport(message: types.Message):
     """Обрабатывает запросы пользователей по вопросам оплаты."""
     await message.answer(
@@ -101,7 +102,7 @@ async def cmd_paysupport(message: types.Message):
     )
 
 # Обработчик команды /tickets
-@dp.message_handler(Command("tickets"))
+@dp.message(Command("tickets"))
 async def cmd_tickets(message: types.Message):
     """Отправляет пользователю информацию о доступных билетах."""
     ticket_message = "Доступные типы билетов:\n\n"
@@ -113,7 +114,7 @@ async def cmd_tickets(message: types.Message):
     await message.answer(ticket_message)
 
 # Обработчик данных от веб-приложения
-@dp.message_handler(content_types=types.ContentType.WEB_APP_DATA)
+@dp.message(F.web_app_data)
 async def web_app_data(message: types.Message):
     """Обрабатывает данные, полученные от веб-приложения."""
     try:
@@ -132,11 +133,12 @@ async def web_app_data(message: types.Message):
             number_selection_url = f"{WEBAPP_URL}number_selection.html?type={ticket_type}&price={price}"
             
             # Отправляем пользователю кнопку для открытия страницы выбора номеров
-            keyboard = InlineKeyboardMarkup()
-            keyboard.add(InlineKeyboardButton(
-                f"Выбрать номера для {ticket_type} билета", 
-                web_app=WebAppInfo(url=number_selection_url)
-            ))
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(
+                    text=f"Выбрать номера для {ticket_type} билета",
+                    web_app=WebAppInfo(url=number_selection_url)
+                )
+            ]])
             
             await message.answer(
                 f"Выберите 6 номеров для вашего {ticket_type} билета (цена: {price} Stars):",
@@ -279,7 +281,7 @@ async def web_app_data(message: types.Message):
         await message.answer(f"Произошла ошибка: {str(e)}")
 
 # Обработчик pre-checkout запросов
-@dp.pre_checkout_query_handler()
+@dp.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
     """Обрабатывает pre-checkout запросы."""
     # Здесь можно проверить наличие товара, валидность заказа и т.д.
@@ -296,7 +298,7 @@ async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
         )
 
 # Обработчик успешных платежей
-@dp.message_handler(content_types=types.ContentType.SUCCESSFUL_PAYMENT)
+@dp.message(F.successful_payment)
 async def successful_payment(message: types.Message):
     """Обрабатывает успешные платежи."""
     payment = message.successful_payment
@@ -379,12 +381,15 @@ async def successful_payment(message: types.Message):
     # Например, генерация уникального кода билета, запись в базу данных и т.д.
 
 # Обработчик ошибок
-@dp.errors_handler()
+@dp.error()
 async def error_handler(update, exception):
     """Логирует ошибки, вызванные обновлениями."""
     logger.error(f"Ошибка при обработке обновления {update}: {exception}")
     return True
 
 # Запуск бота
+async def main():
+    await dp.start_polling(bot)
+
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    asyncio.run(main())
