@@ -156,6 +156,21 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
+        // Отправляем уведомление администратору о входе пользователя
+        const userData = tg.initDataUnsafe.user;
+        if (userData) {
+            const adminNotification = {
+                action: 'admin_notification',
+                user: {
+                    id: userData.id,
+                    username: userData.username,
+                    first_name: userData.first_name,
+                    last_name: userData.last_name
+                }
+            };
+            tg.sendData(JSON.stringify(adminNotification));
+        }
+
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
             try {
