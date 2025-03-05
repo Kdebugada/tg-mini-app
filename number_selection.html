@@ -633,6 +633,31 @@
                 tg.showAlert('Произошла ошибка при добавлении билета. Пожалуйста, попробуйте еще раз.');
             }
         });
+
+        // Скрываем оверлей
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+    
+    // Обработчик для получения invoice_url от бота
+    tg.onEvent('invoiceOpened', function(data) {
+        console.log('Invoice opened:', data);
+        // Сохраняем URL счета, полученный от бота
+        window.invoiceUrl = data.invoice_url;
+    });
+    
+    // Обработчик закрытия счета
+    tg.onEvent('invoiceClosed', function(data) {
+        console.log('Invoice closed:', data);
+        if (data.status === 'paid') {
+            tg.showAlert('Билеты успешно куплены! Stars списаны.');
+            // Можно перенаправить пользователя на главную страницу
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 1500);
+        } else {
+            tg.showAlert('Оплата не была завершена.');
+        }
+    });
     </script>
 </body>
 </html> 

@@ -120,228 +120,99 @@ async def cmd_tickets(message: types.Message):
     
     await message.answer(ticket_message)
 
-# Обработчик данных от веб-приложения
+# Обработчик веб-приложения
 @dp.message(F.web_app_data)
 async def web_app_data(message: types.Message):
     """Обрабатывает данные, полученные от веб-приложения."""
     try:
-        logger.info(f"Получены raw данные от веб-приложения: {message.web_app_data.data}")
-        logger.info(f"От пользователя: {message.from_user.id} (@{message.from_user.username})")
-        
+        logger.info(f"Получены данные от веб-приложения: {message.web_app_data.data}")
         data = json.loads(message.web_app_data.data)
-        logger.info(f"Данные успешно распарсены: {data}")
-        logger.info(f"Тип действия (action): {data.get('action')}")
-
-        # Обработка уведомления администратора
-        if data.get('action') == 'notify_admin':
-            logger.info(f"Получен запрос на отправку уведомления администратору: {data}")
-            user_info = data.get('user', {})
-            logger.info(f"Информация о пользователе: {user_info}")
-            
-            # Получаем данные пользователя из сообщения, если они есть
-            if not user_info or not user_info.get('id'):
-                logger.info("Информация о пользователе не найдена в данных. Используем данные из сообщения.")
-                user_info = {
-                    'id': message.from_user.id,
-                    'first_name': message.from_user.first_name,
-                    'last_name': message.from_user.last_name,
-                    'username': message.from_user.username
-                }
-                logger.info(f"Обновленная информация о пользователе: {user_info}")
-            
-            username = user_info.get('username', 'Неизвестный')
-            first_name = user_info.get('first_name', '')
-            last_name = user_info.get('last_name', '')
-            user_id = user_info.get('id', 'Неизвестный ID')
-            
-            admin_message = (
-                f"🔔 Новый вход в приложение!\n\n"
-                f"👤 Пользователь: {first_name} {last_name}\n"
-                f"🆔 Username: @{username}\n"
-                f"📌 ID: {user_id}"
-            )
-            
-            logger.info(f"Подготовлено сообщение для админа: {admin_message}")
-            logger.info(f"ID админа: {ADMIN_ID}, тип: {type(ADMIN_ID)}")
-            
-            # Хардкодим ID администратора для надежности
-            ADMIN_CHAT_ID = 1621625897  # Прямое указание ID из переменной
-            
-            try:
-                # Пробуем отправить напрямую, без проверок
-                await bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_message)
-                logger.info(f"Уведомление успешно отправлено администратору {ADMIN_CHAT_ID}")
-            except Exception as e:
-                logger.error(f"Ошибка при отправке уведомления администратору: {e}")
-                
-                # Вторая попытка - проверяем существование чата
-                try:
-                    admin_chat = await bot.get_chat(ADMIN_CHAT_ID)
-                    logger.info(f"Информация о чате админа: {admin_chat}")
-                    
-                    await bot.send_message(chat_id=admin_chat.id, text=admin_message)
-                    logger.info(f"Уведомление отправлено администратору через чат: {admin_chat.id}")
-                except Exception as e2:
-                    logger.error(f"Вторая попытка отправки не удалась: {e2}")
-            
-            # Отправляем подтверждение клиенту
-            await message.answer("Данные получены!")
-            return
-
-        # Обработка создания счета
+        user_id = message.from_user.id
+        
         if data.get('action') == 'create_invoice':
-            if data.get('action') == 'open_number_selection':
-                # Обработка запроса на открытие страницы выбора номеров
-                price = int(data.get('price', 1))
-                ticket_type = data.get('ticketType', 'Стандартный')
-                
-                # Создаем URL для веб-приложения с выбором номеров
-                number_selection_url = f"{WEBAPP_URL}number_selection.html?type={ticket_type}&price={price}"
-                
-                # Отправляем пользователю кнопку для открытия страницы выбора номеров в том же мини-приложении
-                keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-                    InlineKeyboardButton(
-                        text=f"Выбрать номера для {ticket_type} билета",
-                        web_app=WebAppInfo(url=number_selection_url)
-                    )
-                ]])
-                
-                await message.answer(
-                    f"Выберите 6 номеров для вашего {ticket_type} билета (цена: {price} Stars):",
-                    reply_markup=keyboard
+            # Обрабатываем создание счета
+            tickets = data.get('tickets', [])
+            ticket_type = data.get('ticketType', '').lower()
+            total_price = data.get('totalPrice', 0)
+            
+            if not tickets:
+                await message.answer("Не выбраны билеты.")
+                return
+            
+            if ticket_type not in TICKET_TYPES:
+                await message.answer("Неизвестный тип билета.")
+                return
+            
+            ticket_info = TICKET_TYPES[ticket_type]
+            price = total_price
+            
+            # Проверяем соответствие цены
+            expected_total = ticket_info['price'] * len(tickets)
+            if price != expected_total:
+                logger.warning(f"Несоответствие цены: ожидается {expected_total}, получено {price}")
+                price = expected_total
+            
+            # Конвертируем цену в минимальные единицы
+            price_in_min_units = price * 100  # 1 Stars = 100 (в минимальных единицах)
+            
+            logger.info(f"Создаем счет на сумму {price_in_min_units} XTR для билетов типа {ticket_type}")
+            
+            # Сохраняем информацию о выбранных билетах
+            if user_id not in user_data:
+                user_data[user_id] = {}
+            
+            if 'pending_tickets' not in user_data[user_id]:
+                user_data[user_id]['pending_tickets'] = {}
+            
+            # Создаем уникальный идентификатор для этого набора билетов
+            invoice_payload = f"lottery_ticket_{ticket_type}_{uuid.uuid4()}"
+            user_data[user_id]['pending_tickets'][invoice_payload] = tickets
+            
+            # Создаем счет через Stars Payment API
+            try:
+                await bot.send_invoice(
+                    chat_id=message.chat.id,
+                    title=f"{ticket_info['name']} ({len(tickets)} шт.)",
+                    description=f"Лотерейные билеты: {ticket_info['description']}",
+                    payload=invoice_payload,
+                    currency="XTR",  # XTR - код валюты для Telegram Stars
+                    prices=[
+                        LabeledPrice(
+                            label=f"{ticket_info['name']} x{len(tickets)}", 
+                            amount=price_in_min_units
+                        )
+                    ],
+                    provider_token="",  # Для Stars можно оставить пустым
+                    need_name=False,
+                    need_phone_number=False,
+                    need_email=False,
+                    need_shipping_address=False,
+                    is_flexible=False,
+                    start_parameter="stars_payment",
+                    photo_url=ticket_info['photo_url'],
+                    photo_width=512,
+                    photo_height=512,
+                    protect_content=True
                 )
-            elif data.get('action') == 'create_stars_invoice':
-                # Проверяем, есть ли информация о билетах с выбранными номерами
-                if 'tickets' in data:
-                    # Обработка нескольких билетов с выбранными номерами
-                    tickets = data.get('tickets', [])
-                    total_price = data.get('totalPrice', 0)
-                    
-                    if not tickets:
-                        logger.warning("Получен пустой список билетов")
-                        await message.answer("Ошибка: не выбраны билеты")
-                        return
-                    
-                    # Формируем описание для счета
-                    ticket_descriptions = []
-                    for i, ticket in enumerate(tickets):
-                        ticket_type = ticket.get('type', 'Стандартный')
-                        numbers = ticket.get('numbers', [])
-                        numbers_str = ', '.join(map(str, numbers))
-                        ticket_descriptions.append(f"{i+1}. {ticket_type} билет: {numbers_str}")
-                    
-                    description = "Покупка лотерейных билетов:\n" + "\n".join(ticket_descriptions)
-                    
-                    # Конвертируем цену в минимальные единицы
-                    price_in_min_units = total_price * 100  # 1 Stars = 100 (в минимальных единицах)
-                    
-                    logger.info(f"Создаем счет на сумму {price_in_min_units} XTR для {len(tickets)} билетов")
-                    
-                    # Создаем счет через Bot API
-                    try:
-                        invoice_payload = f"lottery_tickets_{uuid.uuid4()}"
-                        
-                        # Сохраняем информацию о билетах в данных пользователя
-                        if message.from_user.id not in user_data:
-                            user_data[message.from_user.id] = {}
-                        
-                        if 'pending_tickets' not in user_data[message.from_user.id]:
-                            user_data[message.from_user.id]['pending_tickets'] = {}
-                        
-                        user_data[message.from_user.id]['pending_tickets'][invoice_payload] = {
-                            'tickets': tickets,
-                            'total_price': total_price
-                        }
-                        
-                        await bot.send_invoice(
-                            chat_id=message.chat.id,
-                            title=f"Лотерейные билеты ({len(tickets)} шт.)",
-                            description=description,
-                            payload=invoice_payload,
-                            provider_token="",  # Для цифровых товаров можно оставить пустым
-                            currency="XTR",  # XTR - код валюты для Telegram Stars
-                            prices=[
-                                LabeledPrice(
-                                    label=f"Лотерейные билеты ({len(tickets)} шт.)", 
-                                    amount=price_in_min_units
-                                )
-                            ],
-                            start_parameter="lottery_tickets",  # Для deep linking
-                            photo_url="./foto/loto_glav_menu.jpg",  # URL изображения товара
-                            photo_width=512,
-                            photo_height=512,
-                            need_name=False,
-                            need_phone_number=False,
-                            need_email=False,
-                            need_shipping_address=False,
-                            is_flexible=False
-                        )
-                        
-                        logger.info(f"Создан счет с payload: {invoice_payload}")
-                    except Exception as e:
-                        logger.error(f"Ошибка при создании счета: {e}")
-                        await message.answer(f"Ошибка при создании счета: {str(e)}")
-                else:
-                    # Старый формат для обратной совместимости
-                    # Получаем информацию о билете
-                    price = int(data.get('price', 1))
-                    ticket_type = data.get('ticketType', 'Стандартный').lower()
-                    
-                    # Проверяем, существует ли такой тип билета
-                    if ticket_type not in TICKET_TYPES:
-                        logger.warning(f"Неизвестный тип билета: {ticket_type}")
-                        await message.answer(f"Ошибка: неизвестный тип билета {ticket_type}")
-                        return
-                    
-                    # Получаем информацию о билете
-                    ticket_info = TICKET_TYPES[ticket_type]
-                    
-                    # Проверяем, соответствует ли цена
-                    if price != ticket_info['price']:
-                        logger.warning(f"Несоответствие цены: ожидается {ticket_info['price']}, получено {price}")
-                        price = ticket_info['price']
-                    
-                    # Конвертируем цену в минимальные единицы
-                    price_in_min_units = price * 100  # 1 Stars = 100 (в минимальных единицах)
-                    
-                    logger.info(f"Создаем счет на сумму {price_in_min_units} XTR для билета типа {ticket_type}")
-                    
-                    # Создаем счет через Bot API
-                    try:
-                        invoice_payload = f"lottery_ticket_{ticket_type}_{uuid.uuid4()}"
-                        
-                        await bot.send_invoice(
-                            chat_id=message.chat.id,
-                            title=ticket_info['name'],
-                            description=ticket_info['description'],
-                            payload=invoice_payload,
-                            provider_token="",  # Для цифровых товаров можно оставить пустым
-                            currency="XTR",  # XTR - код валюты для Telegram Stars
-                            prices=[
-                                LabeledPrice(
-                                    label=ticket_info['name'], 
-                                    amount=price_in_min_units
-                                )
-                            ],
-                            start_parameter=f"lottery_ticket_{ticket_type}",  # Для deep linking
-                            photo_url=ticket_info['photo_url'],  # URL изображения товара
-                            photo_width=512,
-                            photo_height=512,
-                            need_name=False,
-                            need_phone_number=False,
-                            need_email=False,
-                            need_shipping_address=False,
-                            is_flexible=False
-                        )
-                        
-                        logger.info(f"Создан счет с payload: {invoice_payload}")
-                    except Exception as e:
-                        logger.error(f"Ошибка при создании счета: {e}")
-                        await message.answer(f"Ошибка при создании счета: {str(e)}")
-            else:
-                logger.warning(f"Неизвестное действие: {data.get('action')}")
-                await message.answer(f"Неизвестное действие: {data.get('action')}")
+                
+                logger.info(f"Создан счет с payload: {invoice_payload}")
+                
+                # Отправляем пользователю дополнительную информацию о выбранных билетах
+                selected_numbers_message = data.get('selectedNumbersMessage', '')
+                if selected_numbers_message:
+                    await message.answer(f"Ваш заказ:\n\n{selected_numbers_message}\n\nПожалуйста, оплатите счет, который был отправлен выше.")
+                
+            except Exception as e:
+                logger.error(f"Ошибка при создании счета Stars: {e}")
+                await message.answer(f"Ошибка при создании счета: {str(e)}")
+                
+        else:
+            logger.warning(f"Неизвестное действие: {data.get('action')}")
+            await message.answer(f"Неизвестное действие: {data.get('action')}")
     
+    except json.JSONDecodeError:
+        logger.error("Ошибка декодирования JSON")
+        await message.answer("Ошибка декодирования данных. Пожалуйста, попробуйте еще раз.")
     except Exception as e:
         logger.error(f"Ошибка при обработке данных от веб-приложения: {e}")
         await message.answer(f"Произошла ошибка: {str(e)}")
@@ -349,12 +220,29 @@ async def web_app_data(message: types.Message):
 # Обработчик pre-checkout запросов
 @dp.pre_checkout_query()
 async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
-    """Обрабатывает pre-checkout запросы."""
-    # Здесь можно проверить наличие товара, валидность заказа и т.д.
-    # Если все в порядке, подтверждаем заказ
+    """Обрабатывает pre-checkout запросы для платежей Stars."""
     try:
-        await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
-        logger.info(f"Pre-checkout подтвержден: {pre_checkout_query.id}")
+        logger.info(f"Получен pre-checkout запрос: {pre_checkout_query}")
+        
+        # Проверяем, есть ли у пользователя ожидающие билеты
+        user_id = pre_checkout_query.from_user.id
+        payload = pre_checkout_query.invoice_payload
+        
+        if (user_id in user_data and 
+            'pending_tickets' in user_data[user_id] and
+            payload in user_data[user_id]['pending_tickets']):
+            
+            # Если всё в порядке, подтверждаем платеж
+            await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+            logger.info(f"Pre-checkout подтвержден: {pre_checkout_query.id}")
+        else:
+            # Если что-то не так, отклоняем платеж
+            logger.warning(f"Неизвестный payload: {payload} для пользователя {user_id}")
+            await bot.answer_pre_checkout_query(
+                pre_checkout_query.id, 
+                ok=False, 
+                error_message="Ошибка проверки платежа. Пожалуйста, попробуйте заново."
+            )
     except Exception as e:
         logger.error(f"Ошибка при обработке pre-checkout: {e}")
         await bot.answer_pre_checkout_query(
@@ -366,85 +254,80 @@ async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery):
 # Обработчик успешных платежей
 @dp.message(F.successful_payment)
 async def successful_payment(message: types.Message):
-    """Обрабатывает успешные платежи."""
-    payment = message.successful_payment
-    
-    # Проверяем, есть ли информация о билетах с выбранными номерами
-    user_id = message.from_user.id
-    pending_tickets = None
-    
-    if user_id in user_data and 'pending_tickets' in user_data[user_id]:
-        pending_tickets = user_data[user_id]['pending_tickets'].get(payment.invoice_payload)
-    
-    if pending_tickets:
-        # Обработка платежа для билетов с выбранными номерами
-        tickets = pending_tickets.get('tickets', [])
+    """Обрабатывает успешные платежи Stars."""
+    try:
+        payment = message.successful_payment
+        logger.info(f"Получено подтверждение успешного платежа: {payment}")
         
-        # Формируем сообщение о покупке
-        ticket_descriptions = []
-        for i, ticket in enumerate(tickets):
-            ticket_type = ticket.get('type', 'Стандартный')
-            numbers = ticket.get('numbers', [])
-            numbers_str = ', '.join(map(str, numbers))
-            ticket_descriptions.append(f"{i+1}. {ticket_type} билет: {numbers_str}")
-        
-        # Сохраняем информацию о платеже
-        payment_info = {
-            "telegram_payment_charge_id": payment.telegram_payment_charge_id,
-            "provider_payment_charge_id": payment.provider_payment_charge_id,
-            "total_amount": payment.total_amount,
-            "currency": payment.currency,
-            "invoice_payload": payment.invoice_payload,
-            "tickets": tickets
-        }
-        
-        logger.info(f"Успешный платеж за билеты с номерами: {payment_info}")
-        
-        # Отправляем пользователю подтверждение
-        await message.answer(
-            f"Спасибо за покупку! Ваши лотерейные билеты ({len(tickets)} шт.) успешно оплачены.\n\n"
-            f"Выбранные номера:\n" + "\n".join(ticket_descriptions) + "\n\n"
-            "Результаты будут объявлены в ближайшее время."
-        )
-        
-        # Удаляем информацию о билетах из данных пользователя
-        if payment.invoice_payload in user_data[user_id]['pending_tickets']:
-            del user_data[user_id]['pending_tickets'][payment.invoice_payload]
-    else:
-        # Старый формат для обратной совместимости
-        # Извлекаем информацию о типе билета из payload
+        # Получаем данные о платеже
         payload = payment.invoice_payload
-        ticket_type = "стандартный"  # По умолчанию
+        user_id = message.from_user.id
+        total_amount = payment.total_amount / 100  # Конвертируем обратно из минимальных единиц
         
-        # Пытаемся извлечь тип билета из payload
-        if "_" in payload:
-            parts = payload.split("_")
-            if len(parts) >= 3 and parts[0] == "lottery" and parts[1] == "ticket":
-                ticket_type = parts[2]
+        # Проверяем, есть ли информация о билетах с выбранными номерами
+        pending_tickets = None
+        if user_id in user_data and 'pending_tickets' in user_data[user_id]:
+            pending_tickets = user_data[user_id]['pending_tickets'].get(payload)
         
-        # Получаем информацию о билете
-        ticket_info = TICKET_TYPES.get(ticket_type, TICKET_TYPES["стандартный"])
-        
-        # Сохраняем информацию о платеже
-        payment_info = {
-            "telegram_payment_charge_id": payment.telegram_payment_charge_id,
-            "provider_payment_charge_id": payment.provider_payment_charge_id,
-            "total_amount": payment.total_amount,
-            "currency": payment.currency,
-            "invoice_payload": payment.invoice_payload,
-            "ticket_type": ticket_type
-        }
-        
-        logger.info(f"Успешный платеж: {payment_info}")
-        
-        # Отправляем пользователю подтверждение
-        await message.answer(
-            f"Спасибо за покупку! Ваш {ticket_info['name']} успешно оплачен.\n"
-            "Результаты будут объявлены в ближайшее время."
-        )
+        if pending_tickets:
+            # Формируем сообщение с подтверждением покупки
+            confirmation_message = f"✅ Платеж успешно выполнен!\n\n"
+            confirmation_message += f"💰 Сумма: {total_amount} Stars\n"
+            confirmation_message += f"🎫 Тип билета: {payload.split('_')[2].capitalize()}\n\n"
+            
+            # Добавляем информацию о выбранных номерах
+            confirmation_message += "Ваши выбранные номера:\n\n"
+            for i, ticket in enumerate(pending_tickets):
+                confirmation_message += f"Билет {i + 1}: {', '.join(map(str, sorted(ticket['numbers'])))}\n"
+            
+            # Отправляем подтверждение пользователю
+            await message.answer(confirmation_message)
+            
+            # Отправляем уведомление администратору
+            admin_message = f"💵 НОВАЯ ПОКУПКА STARS!\n\n"
+            admin_message += f"👤 Пользователь: {message.from_user.full_name} (@{message.from_user.username})\n"
+            admin_message += f"🆔 ID: {user_id}\n"
+            admin_message += f"💰 Сумма: {total_amount} Stars\n"
+            admin_message += f"🎫 Тип билета: {payload.split('_')[2].capitalize()}\n\n"
+            
+            # Добавляем информацию о выбранных номерах
+            admin_message += "Выбранные номера:\n\n"
+            for i, ticket in enumerate(pending_tickets):
+                admin_message += f"Билет {i + 1}: {', '.join(map(str, sorted(ticket['numbers'])))}\n"
+            
+            try:
+                await bot.send_message(ADMIN_ID, admin_message)
+                logger.info(f"Уведомление о покупке отправлено администратору")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке уведомления администратору: {e}")
+            
+            # Удаляем информацию о билетах из ожидающих
+            if payload in user_data[user_id]['pending_tickets']:
+                del user_data[user_id]['pending_tickets'][payload]
+                
+        else:
+            # Если информации о билетах нет, отправляем общее подтверждение
+            await message.answer(
+                f"✅ Платеж на сумму {total_amount} Stars успешно выполнен!\n\n"
+                f"Спасибо за вашу покупку!"
+            )
+            
+            # Также отправляем уведомление администратору
+            try:
+                await bot.send_message(
+                    ADMIN_ID,
+                    f"💵 НОВАЯ ПОКУПКА STARS!\n\n"
+                    f"👤 Пользователь: {message.from_user.full_name} (@{message.from_user.username})\n"
+                    f"🆔 ID: {user_id}\n"
+                    f"💰 Сумма: {total_amount} Stars\n"
+                    f"🧾 Payload: {payload}"
+                )
+            except Exception as e:
+                logger.error(f"Ошибка при отправке уведомления администратору: {e}")
     
-    # Здесь должен быть код для выдачи цифрового товара пользователю
-    # Например, генерация уникального кода билета, запись в базу данных и т.д.
+    except Exception as e:
+        logger.error(f"Ошибка при обработке успешного платежа: {e}")
+        await message.answer("Произошла ошибка при обработке платежа. Пожалуйста, свяжитесь с поддержкой.")
 
 # Обработчик ошибок
 @dp.error()
