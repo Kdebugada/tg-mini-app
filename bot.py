@@ -124,6 +124,24 @@ async def web_app_data(message: types.Message):
         data = json.loads(message.web_app_data.data)
         logger.info(f"Получены данные от веб-приложения: {data}")
 
+        # Обработка уведомления администратора
+        if data.get('action') == 'notify_admin':
+            user_info = data.get('user', {})
+            username = user_info.get('username', 'Неизвестный')
+            first_name = user_info.get('first_name', '')
+            last_name = user_info.get('last_name', '')
+            user_id = user_info.get('id', 'Неизвестный ID')
+            
+            admin_message = (
+                f"🔔 Новый вход в приложение!\n\n"
+                f"👤 Пользователь: {first_name} {last_name}\n"
+                f"🆔 Username: @{username}\n"
+                f"📌 ID: {user_id}"
+            )
+            
+            await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
+            return
+
         # Обработка создания счета
         if data.get('action') == 'create_invoice':
             if data.get('action') == 'open_number_selection':
