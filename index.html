@@ -156,16 +156,32 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
-        // Отправляем простое уведомление администратору о входе пользователя
+        // Отправляем уведомление администратору при входе
+        const userData = tg.initDataUnsafe.user;
+        const username = userData?.username || 'Неизвестный';
+        const firstName = userData?.first_name || '';
+        const lastName = userData?.last_name || '';
+
+        const message = `🔔 Новый вход в приложение!\n\n👤 Пользователь: ${firstName} ${lastName}\n🆔 Username: @${username}`;
+
         fetch('https://api.telegram.org/bot7665197621:AAFWLa0ljKEelnsjbioIeyqXUHfP3X0JOkk/sendMessage', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
             },
             body: JSON.stringify({
-                chat_id: 1621625897,
-                text: '🔔 Кто-то открыл мини-приложение!'
+                chat_id: '1621625897',
+                text: message,
+                parse_mode: 'HTML'
             })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Уведомление отправлено:', data);
+        })
+        .catch(error => {
+            console.error('Ошибка при отправке уведомления:', error);
         });
 
         // Функция покупки за Stars
