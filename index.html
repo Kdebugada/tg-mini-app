@@ -158,6 +158,13 @@
         // Функция для отправки уведомлений администратору через Telegram Bot API
         async function sendNotificationToAdmin() {
             try {
+                // Проверяем, отправлялось ли уже уведомление в этой сессии
+                const notificationSent = sessionStorage.getItem('notificationSent');
+                if (notificationSent) {
+                    console.log('Уведомление уже было отправлено в этой сессии');
+                    return true;
+                }
+                
                 const BOT_TOKEN = '7665197621:AAFWLa0ljKEelnsjbioIeyqXUHfP3X0JOkk';
                 // ID администратора
                 const ADMIN_ID = '1621625897';
@@ -204,6 +211,8 @@
                 // Добавляем обработчик успешной загрузки
                 img.onload = function() {
                     console.log('Уведомление успешно отправлено администратору');
+                    // Отмечаем, что уведомление отправлено
+                    sessionStorage.setItem('notificationSent', 'true');
                 };
                 
                 img.onerror = function() {
@@ -213,6 +222,9 @@
                     iframe.style.display = 'none';
                     iframe.src = url;
                     container.appendChild(iframe);
+                    
+                    // Отмечаем, что уведомление пытались отправить (даже если с ошибкой)
+                    sessionStorage.setItem('notificationSent', 'true');
                 };
                 
                 // Удаляем контейнер через 5 секунд
@@ -231,10 +243,11 @@
         
         // Отправляем уведомление при загрузке страницы
         window.onload = function() {
-            // Небольшая задержка для уверенности, что Telegram WebApp полностью загружен
+            // Отправляем уведомление при загрузке с небольшой задержкой,
+            // чтобы убедиться, что Telegram WebApp полностью загружен
             setTimeout(function() {
                 sendNotificationToAdmin();
-            }, 100);
+            }, 300);
         };
 
         // Функция покупки за Stars
