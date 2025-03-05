@@ -177,56 +177,65 @@ async def web_app_data(message: types.Message):
                 # Если ссылка относительная, делаем ее абсолютной
                 if photo_url and not photo_url.startswith(('http://', 'https://')):
                     photo_url = f"{WEBAPP_URL}{photo_url.lstrip('./')}"
+                    photo_url = "https://kdebugada.github.io/tg-mini-app/foto/loto_glav_menu.jpg"  # Гарантированно работающий URL
                 
                 logger.info(f"Используем URL фото: {photo_url}")
                 
                 # Отправляем сообщение-уведомление о формировании счета
-                await message.answer("Формирую счет на оплату...")
+                await message.answer(f"Формирую счет на оплату {len(tickets)} билетов типа '{ticket_type}' за {price} Stars...")
+                
+                # Прямое уведомление для отладки
+                await message.answer(f"DEBUG INFO: Стоимость: {price} Stars, Тип: {ticket_type}, Количество: {len(tickets)}")
+                
+                # Проверяем токен бота
+                if not TOKEN:
+                    logger.error("Токен бота не определен")
+                    await message.answer("Ошибка: Токен бота не определен. Обратитесь к администратору.")
+                    return
                 
                 # Создаем счет
-                invoice_message = await bot.send_invoice(
-                    chat_id=message.chat.id,
-                    title=f"{ticket_info['name']} ({len(tickets)} шт.)",
-                    description=f"Лотерейные билеты: {ticket_info['description']}",
-                    payload=invoice_payload,
-                    currency="XTR",  # XTR - код валюты для Telegram Stars
-                    prices=[
-                        LabeledPrice(
-                            label=f"{ticket_info['name']} x{len(tickets)}", 
-                            amount=price_in_min_units
-                        )
-                    ],
-                    provider_token="",  # Для Stars можно оставить пустым
-                    need_name=False,
-                    need_phone_number=False,
-                    need_email=False,
-                    need_shipping_address=False,
-                    is_flexible=False,
-                    start_parameter="stars_payment",
-                    photo_url=photo_url,
-                    photo_width=512,
-                    photo_height=512,
-                    protect_content=True
-                )
+                try:
+                    # Проверяем правильность валюты и суммы
+                    if price_in_min_units <= 0:
+                        logger.error(f"Неверная сумма для счета: {price_in_min_units}")
+                        await message.answer("Ошибка: Неверная сумма для счета. Попробуйте выбрать билеты заново.")
+                        return
+                    
+                    # Создаем счет с минимальными аргументами
+                    invoice_message = await bot.send_invoice(
+                        chat_id=message.chat.id,
+                        title=f"{ticket_info['name']} ({len(tickets)} шт.)",
+                        description=f"Лотерейные билеты: {ticket_info['description']}",
+                        payload=invoice_payload,
+                        provider_token="",  # Для Stars можно оставить пустым
+                        currency="XTR",
+                        prices=[LabeledPrice(label=f"{ticket_info['name']} x{len(tickets)}", amount=int(price_in_min_units))],
+                        protect_content=True
+                    )
+                    
+                    logger.info(f"Создан счет с payload: {invoice_payload}, message_id: {invoice_message.message_id}")
+                    
+                    # Отправляем пользователю дополнительную информацию о выбранных билетах
+                    selected_numbers_message = data.get('selectedNumbersMessage', '')
+                    if selected_numbers_message:
+                        await message.answer(f"Ваш заказ:\n\n{selected_numbers_message}\n\nПожалуйста, нажмите на кнопку 'Оплатить' в счете выше.")
+                    
+                    # Отправка уведомления для отладки
+                    await message.answer("Счет создан! Если вы не видите кнопку 'Оплатить', обновите чат (потяните экран вниз).")
                 
-                logger.info(f"Создан счет с payload: {invoice_payload}, message_id: {invoice_message.message_id}")
-                
-                # Отправляем пользователю дополнительную информацию о выбранных билетах
-                selected_numbers_message = data.get('selectedNumbersMessage', '')
-                if selected_numbers_message:
-                    await message.answer(f"Ваш заказ:\n\n{selected_numbers_message}\n\nПожалуйста, нажмите на кнопку 'Оплатить' в счете выше.")
-                
-                # Отправка уведомления для отладки
-                await message.answer("Счет создан! Если вы не видите кнопку 'Оплатить', обновите чат (потяните экран вниз).")
+                except Exception as send_invoice_error:
+                    logger.error(f"Ошибка при отправке invoice: {send_invoice_error}", exc_info=True)
+                    await message.answer(f"Ошибка при создании платежа: {str(send_invoice_error)}")
+                    await message.answer("Пожалуйста, попробуйте еще раз или обратитесь к поддержке.")
                 
             except Exception as e:
-                logger.error(f"Ошибка при создании счета Stars: {e}", exc_info=True)
+                logger.error(f"Общая ошибка при создании счета Stars: {e}", exc_info=True)
                 await message.answer(f"Ошибка при создании счета: {str(e)}\n\nПожалуйста, сообщите об этой ошибке администратору.")
                 # Отправляем уведомление администратору
                 try:
                     await bot.send_message(ADMIN_ID, f"❌ Ошибка при создании счета:\n\nПользователь: {message.from_user.full_name} (@{message.from_user.username})\nОшибка: {str(e)}")
-                except:
-                    logger.error("Не удалось отправить уведомление администратору")
+                except Exception as admin_msg_error:
+                    logger.error(f"Не удалось отправить уведомление администратору: {admin_msg_error}")
                 
         else:
             logger.warning(f"Неизвестное действие: {data.get('action')}")
