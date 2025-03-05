@@ -126,6 +126,8 @@ async def web_app_data(message: types.Message):
     """Обрабатывает данные, полученные от веб-приложения."""
     try:
         logger.info(f"Получены raw данные от веб-приложения: {message.web_app_data.data}")
+        logger.info(f"От пользователя: {message.from_user.id} (@{message.from_user.username})")
+        
         data = json.loads(message.web_app_data.data)
         logger.info(f"Данные успешно распарсены: {data}")
         logger.info(f"Тип действия (action): {data.get('action')}")
@@ -135,6 +137,18 @@ async def web_app_data(message: types.Message):
             logger.info(f"Получен запрос на отправку уведомления администратору: {data}")
             user_info = data.get('user', {})
             logger.info(f"Информация о пользователе: {user_info}")
+            
+            # Получаем данные пользователя из сообщения, если они есть
+            if not user_info or not user_info.get('id'):
+                logger.info("Информация о пользователе не найдена в данных. Используем данные из сообщения.")
+                user_info = {
+                    'id': message.from_user.id,
+                    'first_name': message.from_user.first_name,
+                    'last_name': message.from_user.last_name,
+                    'username': message.from_user.username
+                }
+                logger.info(f"Обновленная информация о пользователе: {user_info}")
+            
             username = user_info.get('username', 'Неизвестный')
             first_name = user_info.get('first_name', '')
             last_name = user_info.get('last_name', '')
@@ -150,38 +164,28 @@ async def web_app_data(message: types.Message):
             logger.info(f"Подготовлено сообщение для админа: {admin_message}")
             logger.info(f"ID админа: {ADMIN_ID}, тип: {type(ADMIN_ID)}")
             
+            # Хардкодим ID администратора для надежности
+            ADMIN_CHAT_ID = 1621625897  # Прямое указание ID из переменной
+            
             try:
-                admin_chat = await bot.get_chat(ADMIN_ID)
-                logger.info(f"Информация о чате админа: {admin_chat}")
-                
-                await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
-                logger.info(f"Уведомление успешно отправлено администратору {ADMIN_ID}")
+                # Пробуем отправить напрямую, без проверок
+                await bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_message)
+                logger.info(f"Уведомление успешно отправлено администратору {ADMIN_CHAT_ID}")
             except Exception as e:
                 logger.error(f"Ошибка при отправке уведомления администратору: {e}")
                 
-                # Пробуем отправить сообщение в числовой формат ID, на всякий случай
+                # Вторая попытка - проверяем существование чата
                 try:
-                    if isinstance(ADMIN_ID, str):
-                        numeric_admin_id = int(ADMIN_ID)
-                        await bot.send_message(chat_id=numeric_admin_id, text=admin_message)
-                        logger.info(f"Уведомление отправлено администратору после конвертации ID в число: {numeric_admin_id}")
-                    else:
-                        # Принудительная конвертация и попытка
-                        numeric_admin_id = int(str(ADMIN_ID))
-                        await bot.send_message(chat_id=numeric_admin_id, text=admin_message)
-                        logger.info(f"Уведомление отправлено администратору через принудительную конвертацию: {numeric_admin_id}")
+                    admin_chat = await bot.get_chat(ADMIN_CHAT_ID)
+                    logger.info(f"Информация о чате админа: {admin_chat}")
+                    
+                    await bot.send_message(chat_id=admin_chat.id, text=admin_message)
+                    logger.info(f"Уведомление отправлено администратору через чат: {admin_chat.id}")
                 except Exception as e2:
-                    logger.error(f"Вторая попытка отправки также не удалась: {e2}")
-                    # Последняя попытка - используем ID напрямую, без преобразований
-                    try:
-                        direct_id = 1621625897  # Хардкодим ID администратора
-                        await bot.send_message(chat_id=direct_id, text=admin_message)
-                        logger.info(f"Уведомление отправлено администратору напрямую по ID: {direct_id}")
-                    except Exception as e3:
-                        logger.error(f"Все попытки отправить уведомление администратору не удались: {e3}")
+                    logger.error(f"Вторая попытка отправки не удалась: {e2}")
             
             # Отправляем подтверждение клиенту
-            await message.answer("Добро пожаловать в лотерею!")
+            await message.answer("Данные получены!")
             return
 
         # Обработка создания счета

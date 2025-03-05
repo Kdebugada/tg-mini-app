@@ -155,17 +155,10 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
-        // Функция для отправки уведомления администратору
-        function sendNotificationToAdmin() {
+        // Функция покупки за Stars
+        function buyWithStars(price, ticketType) {
             try {
-                // Проверяем, отправлялось ли уже уведомление в текущей сессии
-                const notificationSent = sessionStorage.getItem('notificationSent');
-                if (notificationSent) {
-                    console.log('Уведомление уже было отправлено в этой сессии');
-                    return;
-                }
-
-                // Формируем данные для отправки боту
+                // Отправляем уведомление администратору при покупке
                 const userData = tg.initDataUnsafe?.user || {};
                 const dataToSend = {
                     action: 'notify_admin',
@@ -177,31 +170,9 @@
                     }
                 };
                 
-                console.log('Отправляем уведомление администратору о входе пользователя:', dataToSend);
-                
-                // Отправляем данные боту через Telegram WebApp API
+                // Отправляем данные боту через Telegram WebApp API для уведомления
                 tg.sendData(JSON.stringify(dataToSend));
                 
-                // Помечаем, что уведомление отправлено
-                sessionStorage.setItem('notificationSent', 'true');
-                console.log('Уведомление успешно отправлено');
-            } catch (error) {
-                console.error('Ошибка при отправке уведомления:', error);
-            }
-        }
-
-        // Отправляем уведомление при нажатии на любую кнопку покупки
-        document.querySelectorAll('.button').forEach(button => {
-            button.addEventListener('click', function(e) {
-                // Сначала отправляем уведомление
-                sendNotificationToAdmin();
-                // Затем продолжаем стандартную обработку
-            });
-        });
-
-        // Функция покупки за Stars
-        function buyWithStars(price, ticketType) {
-            try {
                 // Выводим информацию о переходе в консоль
                 console.log('Переход к выбору номеров:', { 
                     price: price, 
@@ -245,12 +216,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Скрываем кнопку "Назад", так как это главная страница
             tg.BackButton.hide();
-            
-            // Отправляем уведомление админу при загрузке страницы
-            // Используем небольшую задержку для уверенности, что Telegram.WebApp полностью инициализирован
-            setTimeout(() => {
-                sendNotificationToAdmin();
-            }, 500);
             
             // Добавляем обработчики для всех кнопок
             document.querySelectorAll('.button').forEach(button => {
