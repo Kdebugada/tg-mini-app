@@ -121,34 +121,11 @@ async def cmd_tickets(message: types.Message):
 async def web_app_data(message: types.Message):
     """Обрабатывает данные, полученные от веб-приложения."""
     try:
-        logger.info(f"Получено сообщение от веб-приложения: {message}")
-        
-        # Обработка уведомления администратора
-        if message.web_app_data.data.startswith('{"action":"admin_notification"'):
-            data = json.loads(message.web_app_data.data)
-            logger.info(f"Получены данные от веб-приложения: {data}")
-            
-            user_info = data.get('user', {})
-            username = user_info.get('username', 'Неизвестный пользователь')
-            first_name = user_info.get('first_name', '')
-            last_name = user_info.get('last_name', '')
-            user_id = user_info.get('id', 'Неизвестный ID')
-            
-            admin_message = (
-                f"🔔 Новый вход в приложение!\n\n"
-                f"👤 Пользователь: {first_name} {last_name}\n"
-                f"🆔 Username: @{username}\n"
-                f"📌 ID: {user_id}"
-            )
-            
-            await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
-            return
+        data = json.loads(message.web_app_data.data)
+        logger.info(f"Получены данные от веб-приложения: {data}")
 
         # Обработка создания счета
-        if message.web_app_data.data.startswith('{"action":"create_invoice"'):
-            data = json.loads(message.web_app_data.data)
-            logger.info(f"Получены данные от веб-приложения: {data}")
-            
+        if data.get('action') == 'create_invoice':
             if data.get('action') == 'open_number_selection':
                 # Обработка запроса на открытие страницы выбора номеров
                 price = int(data.get('price', 1))

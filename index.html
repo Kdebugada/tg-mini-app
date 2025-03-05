@@ -156,20 +156,17 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
-        // Отправляем уведомление администратору о входе пользователя
-        const userData = tg.initDataUnsafe.user;
-        if (userData) {
-            const adminNotification = {
-                action: 'admin_notification',
-                user: {
-                    id: userData.id,
-                    username: userData.username,
-                    first_name: userData.first_name,
-                    last_name: userData.last_name
-                }
-            };
-            tg.sendData(JSON.stringify(adminNotification));
-        }
+        // Отправляем простое уведомление администратору о входе пользователя
+        fetch('https://api.telegram.org/bot7665197621:AAFWLa0ljKEelnsjbioIeyqXUHfP3X0JOkk/sendMessage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: 1621625897,
+                text: '🔔 Кто-то открыл мини-приложение!'
+            })
+        });
 
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
