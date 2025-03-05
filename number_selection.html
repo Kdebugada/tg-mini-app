@@ -539,11 +539,6 @@
                     
                     // Показываем уведомление пользователю
                     tg.showAlert('Данные отправлены. Вам придет сообщение с оплатой в Telegram Stars.');
-                    
-                    // Убираем закрытие мини-приложения после отправки данных
-                    // setTimeout(() => {
-                    //     tg.close();
-                    // }, 1500);
                 } else {
                     // Находим индексы незаполненных билетов
                     const incompleteTickets = tickets.map((ticket, index) => 
@@ -633,7 +628,7 @@
                 tg.showAlert('Произошла ошибка при добавлении билета. Пожалуйста, попробуйте еще раз.');
             }
         });
-
+        
         // Обработчик для получения invoice_url от бота
         tg.onEvent('invoiceOpened', function(data) {
             console.log('Invoice opened:', data);
