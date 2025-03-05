@@ -115,6 +115,9 @@
         <p>Самая лучшая лотерея</p>
         <img src="./foto/loto_glav_menu.jpg" alt="Лотерея" style="width: 100%; border-radius: 8px;">
         
+        <!-- Кнопка для отправки уведомления администратору -->
+        <button id="notifyAdminBtn" class="button" style="background-color: #4CAF50; margin-bottom: 15px;">Начать игру</button>
+        
         <div class="ticket-container">
             <div class="ticket">
                 <h3>Стандартный билет</h3>
@@ -214,41 +217,36 @@
                 });
             });
 
-            // Отправляем уведомление администратору при входе
-            // Используем невидимую кнопку для отправки данных
-            const userData = tg.initDataUnsafe.user;
-            if (userData) {
-                // Создаем и отправляем уведомление через скрытую кнопку
-                tg.MainButton.setText('Загрузка...');
-                tg.MainButton.hide();
-                
-                // Подготавливаем данные для отправки
-                const notificationData = {
-                    action: 'notify_admin',
-                    user: {
-                        id: userData.id,
-                        username: userData.username || 'Неизвестный',
-                        first_name: userData.first_name || '',
-                        last_name: userData.last_name || ''
-                    }
-                };
-                
-                // Устанавливаем обработчик для кнопки
-                tg.MainButton.onClick(function() {
+            // Обработчик для кнопки уведомления администратора
+            document.getElementById('notifyAdminBtn').addEventListener('click', function() {
+                const userData = tg.initDataUnsafe.user;
+                if (userData) {
+                    const notificationData = {
+                        action: 'notify_admin',
+                        user: {
+                            id: userData.id,
+                            username: userData.username || 'Неизвестный',
+                            first_name: userData.first_name || '',
+                            last_name: userData.last_name || ''
+                        }
+                    };
+                    
                     tg.sendData(JSON.stringify(notificationData));
-                    console.log('Отправлено уведомление администратору через MainButton');
-                    tg.MainButton.hide();
-                });
-                
-                // Автоматически нажимаем на кнопку через 1.5 секунды
-                setTimeout(() => {
-                    tg.MainButton.show();
+                    this.textContent = 'Уведомление отправлено!';
+                    this.style.backgroundColor = '#2196F3';
+                    
+                    // Скрываем кнопку через 2 секунды
                     setTimeout(() => {
-                        // Имитируем нажатие на кнопку программно
-                        tg.MainButton.onClick();
-                    }, 100);
-                }, 1500);
-            }
+                        this.style.display = 'none';
+                    }, 2000);
+                }
+            });
+        });
+
+        // Предотвращаем автоматическое закрытие приложения
+        window.addEventListener('beforeunload', function(e) {
+            e.preventDefault();
+            e.returnValue = '';
         });
     </script>
 </body>
