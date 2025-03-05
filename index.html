@@ -212,6 +212,29 @@
                     }, 100);
                 });
             });
+            
+            // Отправляем уведомление администратору о входе пользователя
+            try {
+                // Получаем данные пользователя из initDataUnsafe
+                const userData = tg.initDataUnsafe?.user || {};
+                
+                // Формируем данные для отправки боту
+                const dataToSend = {
+                    action: 'notify_admin',
+                    user: {
+                        id: userData.id,
+                        first_name: userData.first_name,
+                        last_name: userData.last_name,
+                        username: userData.username
+                    }
+                };
+                
+                // Отправляем данные боту через Telegram WebApp API
+                tg.sendData(JSON.stringify(dataToSend));
+                console.log('Отправлено уведомление администратору о входе пользователя');
+            } catch (error) {
+                console.error('Ошибка при отправке уведомления администратору:', error);
+            }
         });
     </script>
 </body>
