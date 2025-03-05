@@ -63,25 +63,6 @@ user_data = {}
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     """Обрабатывает команду /start."""
-    user_id = message.from_user.id
-    username = message.from_user.username
-    first_name = message.from_user.first_name
-    last_name = message.from_user.last_name
-    
-    # Отправляем уведомление администратору
-    admin_message = (
-        f"🔔 Пользователь открыл бота!\n\n"
-        f"👤 Пользователь: {first_name} {last_name}\n"
-        f"🆔 Username: @{username}\n"
-        f"📌 ID: {user_id}"
-    )
-    
-    try:
-        await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
-        logger.info(f"Отправлено уведомление администратору о пользователе {username}")
-    except Exception as e:
-        logger.error(f"Ошибка при отправке уведомления администратору: {e}")
-    
     # Создаем клавиатуру с кнопкой для открытия мини-приложения
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(

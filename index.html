@@ -145,7 +145,6 @@
     <script>
         let tg = window.Telegram.WebApp;
         tg.expand(); // Раскрываем на всю высоту
-        tg.enableClosingConfirmation();
 
         // Устанавливаем основной цвет
         document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#2cab37');
@@ -213,12 +212,6 @@
                     }, 100);
                 });
             });
-        });
-
-        // Предотвращаем автоматическое закрытие приложения
-        window.addEventListener('beforeunload', function(e) {
-            e.preventDefault();
-            e.returnValue = '';
         });
     </script>
 </body>
