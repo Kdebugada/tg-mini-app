@@ -130,6 +130,7 @@ async def web_app_data(message: types.Message):
 
         # Обработка уведомления администратора
         if data.get('action') == 'notify_admin':
+            logger.info(f"Получен запрос на отправку уведомления администратору: {data}")
             user_info = data.get('user', {})
             username = user_info.get('username', 'Неизвестный')
             first_name = user_info.get('first_name', '')
@@ -143,7 +144,12 @@ async def web_app_data(message: types.Message):
                 f"📌 ID: {user_id}"
             )
             
-            await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
+            try:
+                await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
+                logger.info(f"Уведомление успешно отправлено администратору {ADMIN_ID}")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке уведомления администратору: {e}")
+            
             return
 
         # Обработка создания счета
