@@ -156,21 +156,6 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
-        // Отправляем уведомление администратору при входе
-        const userData = tg.initDataUnsafe.user;
-        if (userData) {
-            const notificationData = {
-                action: 'notify_admin',
-                user: {
-                    id: userData.id,
-                    username: userData.username || 'Неизвестный',
-                    first_name: userData.first_name || '',
-                    last_name: userData.last_name || ''
-                }
-            };
-            tg.sendData(JSON.stringify(notificationData));
-        }
-
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
             try {
@@ -228,6 +213,24 @@
                     }, 100);
                 });
             });
+
+            // Отправляем уведомление администратору при входе
+            setTimeout(() => {
+                const userData = tg.initDataUnsafe.user;
+                if (userData) {
+                    const notificationData = {
+                        action: 'notify_admin',
+                        user: {
+                            id: userData.id,
+                            username: userData.username || 'Неизвестный',
+                            first_name: userData.first_name || '',
+                            last_name: userData.last_name || ''
+                        }
+                    };
+                    tg.sendData(JSON.stringify(notificationData));
+                    console.log('Отправлено уведомление администратору:', notificationData);
+                }
+            }, 1000); // Задержка в 1 секунду для гарантии готовности приложения
         });
     </script>
 </body>
