@@ -544,6 +544,9 @@
                         
                         console.log('Отправляем данные боту для создания инвойса:', dataToSend);
                         
+                        // Показываем индикатор загрузки
+                        tg.MainButton.showProgress(true);
+                        
                         // Показываем пользователю выбранные числа
                         tg.showAlert(selectedNumbersMessage);
                         
@@ -551,7 +554,12 @@
                         tg.sendData(JSON.stringify(dataToSend));
                         
                         // Показываем уведомление пользователю
-                        tg.showAlert('Данные отправлены. Вам придет сообщение с оплатой в Telegram Stars.');
+                        tg.showAlert('Данные отправлены. Подождите, сейчас появится счет для оплаты в Telegram Stars.');
+                        
+                        // Скрываем индикатор через 3 секунды
+                        setTimeout(() => {
+                            tg.MainButton.showProgress(false);
+                        }, 3000);
                     } else {
                         // Находим индексы незаполненных билетов
                         const incompleteTickets = tickets.map((ticket, index) => 
@@ -647,19 +655,37 @@
                 console.log('Invoice opened:', data);
                 // Сохраняем URL счета, полученный от бота
                 window.invoiceUrl = data.invoice_url;
+                
+                // Отображаем эту информацию для отладки
+                console.log('Получен URL счета:', window.invoiceUrl);
+                
+                // Скрываем индикатор загрузки на основной кнопке
+                tg.MainButton.showProgress(false);
+                
+                // Изменяем текст кнопки
+                tg.MainButton.text = "Счет создан";
+                tg.MainButton.color = "#4CAF50";
             });
             
             // Обработчик закрытия счета
             tg.onEvent('invoiceClosed', function(data) {
                 console.log('Invoice closed:', data);
+                
                 if (data.status === 'paid') {
                     tg.showAlert('Билеты успешно куплены! Stars списаны.');
-                    // Можно перенаправить пользователя на главную страницу
+                    // Возвращаем текст и цвет кнопки к исходным
+                    tg.MainButton.text = "Купить билет";
+                    tg.MainButton.color = "#2481cc";
+                    
+                    // Перенаправляем пользователя на главную страницу
                     setTimeout(() => {
                         window.location.href = 'index.html';
                     }, 1500);
                 } else {
                     tg.showAlert('Оплата не была завершена.');
+                    // Возвращаем текст и цвет кнопки к исходным
+                    tg.MainButton.text = "Купить билет";
+                    tg.MainButton.color = "#2481cc";
                 }
             });
         });

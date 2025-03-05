@@ -170,7 +170,21 @@ async def web_app_data(message: types.Message):
             
             # Создаем счет через Stars Payment API
             try:
-                await bot.send_invoice(
+                logger.info(f"Отправляем запрос на создание счета: {ticket_info}")
+                
+                # Проверка URL фото
+                photo_url = ticket_info.get('photo_url', "")
+                # Если ссылка относительная, делаем ее абсолютной
+                if photo_url and not photo_url.startswith(('http://', 'https://')):
+                    photo_url = f"{WEBAPP_URL}{photo_url.lstrip('./')}"
+                
+                logger.info(f"Используем URL фото: {photo_url}")
+                
+                # Отправляем сообщение-уведомление о формировании счета
+                await message.answer("Формирую счет на оплату...")
+                
+                # Создаем счет
+                invoice_message = await bot.send_invoice(
                     chat_id=message.chat.id,
                     title=f"{ticket_info['name']} ({len(tickets)} шт.)",
                     description=f"Лотерейные билеты: {ticket_info['description']}",
@@ -189,22 +203,30 @@ async def web_app_data(message: types.Message):
                     need_shipping_address=False,
                     is_flexible=False,
                     start_parameter="stars_payment",
-                    photo_url=ticket_info['photo_url'],
+                    photo_url=photo_url,
                     photo_width=512,
                     photo_height=512,
                     protect_content=True
                 )
                 
-                logger.info(f"Создан счет с payload: {invoice_payload}")
+                logger.info(f"Создан счет с payload: {invoice_payload}, message_id: {invoice_message.message_id}")
                 
                 # Отправляем пользователю дополнительную информацию о выбранных билетах
                 selected_numbers_message = data.get('selectedNumbersMessage', '')
                 if selected_numbers_message:
-                    await message.answer(f"Ваш заказ:\n\n{selected_numbers_message}\n\nПожалуйста, оплатите счет, который был отправлен выше.")
+                    await message.answer(f"Ваш заказ:\n\n{selected_numbers_message}\n\nПожалуйста, нажмите на кнопку 'Оплатить' в счете выше.")
+                
+                # Отправка уведомления для отладки
+                await message.answer("Счет создан! Если вы не видите кнопку 'Оплатить', обновите чат (потяните экран вниз).")
                 
             except Exception as e:
-                logger.error(f"Ошибка при создании счета Stars: {e}")
-                await message.answer(f"Ошибка при создании счета: {str(e)}")
+                logger.error(f"Ошибка при создании счета Stars: {e}", exc_info=True)
+                await message.answer(f"Ошибка при создании счета: {str(e)}\n\nПожалуйста, сообщите об этой ошибке администратору.")
+                # Отправляем уведомление администратору
+                try:
+                    await bot.send_message(ADMIN_ID, f"❌ Ошибка при создании счета:\n\nПользователь: {message.from_user.full_name} (@{message.from_user.username})\nОшибка: {str(e)}")
+                except:
+                    logger.error("Не удалось отправить уведомление администратору")
                 
         else:
             logger.warning(f"Неизвестное действие: {data.get('action')}")
