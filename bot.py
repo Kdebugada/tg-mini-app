@@ -144,12 +144,29 @@ async def web_app_data(message: types.Message):
                 f"📌 ID: {user_id}"
             )
             
+            logger.info(f"Подготовлено сообщение для админа: {admin_message}")
+            logger.info(f"ID админа: {ADMIN_ID}, тип: {type(ADMIN_ID)}")
+            
             try:
+                admin_chat = await bot.get_chat(ADMIN_ID)
+                logger.info(f"Информация о чате админа: {admin_chat}")
+                
                 await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
                 logger.info(f"Уведомление успешно отправлено администратору {ADMIN_ID}")
             except Exception as e:
                 logger.error(f"Ошибка при отправке уведомления администратору: {e}")
+                
+                # Пробуем отправить сообщение в числовой формат ID, на всякий случай
+                try:
+                    if isinstance(ADMIN_ID, str):
+                        numeric_admin_id = int(ADMIN_ID)
+                        await bot.send_message(chat_id=numeric_admin_id, text=admin_message)
+                        logger.info(f"Уведомление отправлено администратору после конвертации ID в число: {numeric_admin_id}")
+                except Exception as e2:
+                    logger.error(f"Вторая попытка отправки также не удалась: {e2}")
             
+            # Отправляем подтверждение клиенту
+            await message.answer("Добро пожаловать в лотерею!")
             return
 
         # Обработка создания счета

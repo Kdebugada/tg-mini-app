@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Уведомление</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="telegram-web-app-ready" content="true">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            color: var(--tg-theme-text-color);
+            background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #24243e);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            animation: gradient 15s ease infinite;
+            background-size: 400% 400%;
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 80%;
+        }
+
+        .button {
+            background: var(--tg-theme-button-color, rgba(255, 255, 255, 0.1));
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            width: 100%;
+            margin: 10px 0;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--tg-theme-button-color, #ffffff);
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Загрузка приложения</h2>
+        <div class="spinner"></div>
+        <p>Пожалуйста, нажмите кнопку ниже, чтобы продолжить</p>
+        <button class="button" id="continueButton">Продолжить</button>
+    </div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Устанавливаем основной цвет
+        document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#2cab37');
+        document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+        document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+
+        // Получаем данные пользователя из сессии
+        const userDataStr = sessionStorage.getItem('userData');
+        let userData = {};
+        
+        try {
+            if (userDataStr) {
+                userData = JSON.parse(userDataStr);
+            } else {
+                // Если данные не найдены в sessionStorage, берем из tg.initDataUnsafe
+                userData = tg.initDataUnsafe?.user || {};
+            }
+        } catch (error) {
+            console.error('Ошибка при парсинге данных пользователя:', error);
+            userData = tg.initDataUnsafe?.user || {};
+        }
+
+        // Функция для отправки уведомления и перехода на главную страницу
+        function sendNotificationAndContinue() {
+            try {
+                // Формируем данные для отправки боту
+                const dataToSend = {
+                    action: 'notify_admin',
+                    user: {
+                        id: userData.id,
+                        first_name: userData.first_name,
+                        last_name: userData.last_name,
+                        username: userData.username
+                    }
+                };
+                
+                console.log('Отправляем уведомление администратору о входе пользователя:', dataToSend);
+                
+                // Отправляем данные боту через Telegram WebApp API
+                tg.sendData(JSON.stringify(dataToSend));
+                
+                // Устанавливаем флаг в sessionStorage
+                sessionStorage.setItem('notifyCompleted', 'true');
+                
+                // Перенаправляем на главную страницу через 500 мс
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 500);
+            } catch (error) {
+                console.error('Ошибка при отправке уведомления:', error);
+                
+                // Даже при ошибке перенаправляем на главную
+                sessionStorage.setItem('notifyCompleted', 'true');
+                window.location.href = 'index.html';
+            }
+        }
+
+        // Отправляем уведомление при нажатии на кнопку "Продолжить"
+        document.getElementById('continueButton').addEventListener('click', sendNotificationAndContinue);
+        
+        // Имитация автоматического нажатия на кнопку, но только если tg.initDataUnsafe не пустой
+        if (tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length > 0) {
+            // Устанавливаем небольшую задержку, чтобы пользователь видел загрузку
+            setTimeout(() => {
+                sendNotificationAndContinue();
+            }, 1000);
+        }
+    </script>
+</body>
+</html> 
