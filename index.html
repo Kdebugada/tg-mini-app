@@ -155,22 +155,49 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
-        // Проверяем, пришли ли мы со страницы уведомления
-        const notifyCompleted = sessionStorage.getItem('notifyCompleted');
-        
-        // Если не пришли со страницы уведомления, перенаправляем на нее
-        if (!notifyCompleted) {
-            console.log('Перенаправление на страницу уведомлений');
-            
-            // Сохраняем данные пользователя для передачи на страницу уведомлений
-            const userData = tg.initDataUnsafe?.user || {};
-            sessionStorage.setItem('userData', JSON.stringify(userData));
-            
-            // Перенаправляем на страницу уведомлений
-            window.location.href = 'notify.html';
-        } else {
-            console.log('Возврат с страницы уведомлений, продолжаем работу с приложением');
+        // Функция для отправки уведомления администратору
+        function sendNotificationToAdmin() {
+            try {
+                // Проверяем, отправлялось ли уже уведомление в текущей сессии
+                const notificationSent = sessionStorage.getItem('notificationSent');
+                if (notificationSent) {
+                    console.log('Уведомление уже было отправлено в этой сессии');
+                    return;
+                }
+
+                // Формируем данные для отправки боту
+                const userData = tg.initDataUnsafe?.user || {};
+                const dataToSend = {
+                    action: 'notify_admin',
+                    user: {
+                        id: userData.id,
+                        first_name: userData.first_name,
+                        last_name: userData.last_name,
+                        username: userData.username
+                    }
+                };
+                
+                console.log('Отправляем уведомление администратору о входе пользователя:', dataToSend);
+                
+                // Отправляем данные боту через Telegram WebApp API
+                tg.sendData(JSON.stringify(dataToSend));
+                
+                // Помечаем, что уведомление отправлено
+                sessionStorage.setItem('notificationSent', 'true');
+                console.log('Уведомление успешно отправлено');
+            } catch (error) {
+                console.error('Ошибка при отправке уведомления:', error);
+            }
         }
+
+        // Отправляем уведомление при нажатии на любую кнопку покупки
+        document.querySelectorAll('.button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                // Сначала отправляем уведомление
+                sendNotificationToAdmin();
+                // Затем продолжаем стандартную обработку
+            });
+        });
 
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
@@ -218,6 +245,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Скрываем кнопку "Назад", так как это главная страница
             tg.BackButton.hide();
+            
+            // Отправляем уведомление админу при загрузке страницы
+            // Используем небольшую задержку для уверенности, что Telegram.WebApp полностью инициализирован
+            setTimeout(() => {
+                sendNotificationToAdmin();
+            }, 500);
             
             // Добавляем обработчики для всех кнопок
             document.querySelectorAll('.button').forEach(button => {

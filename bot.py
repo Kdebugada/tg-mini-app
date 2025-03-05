@@ -125,13 +125,16 @@ async def cmd_tickets(message: types.Message):
 async def web_app_data(message: types.Message):
     """Обрабатывает данные, полученные от веб-приложения."""
     try:
+        logger.info(f"Получены raw данные от веб-приложения: {message.web_app_data.data}")
         data = json.loads(message.web_app_data.data)
-        logger.info(f"Получены данные от веб-приложения: {data}")
+        logger.info(f"Данные успешно распарсены: {data}")
+        logger.info(f"Тип действия (action): {data.get('action')}")
 
         # Обработка уведомления администратора
         if data.get('action') == 'notify_admin':
             logger.info(f"Получен запрос на отправку уведомления администратору: {data}")
             user_info = data.get('user', {})
+            logger.info(f"Информация о пользователе: {user_info}")
             username = user_info.get('username', 'Неизвестный')
             first_name = user_info.get('first_name', '')
             last_name = user_info.get('last_name', '')
@@ -162,8 +165,20 @@ async def web_app_data(message: types.Message):
                         numeric_admin_id = int(ADMIN_ID)
                         await bot.send_message(chat_id=numeric_admin_id, text=admin_message)
                         logger.info(f"Уведомление отправлено администратору после конвертации ID в число: {numeric_admin_id}")
+                    else:
+                        # Принудительная конвертация и попытка
+                        numeric_admin_id = int(str(ADMIN_ID))
+                        await bot.send_message(chat_id=numeric_admin_id, text=admin_message)
+                        logger.info(f"Уведомление отправлено администратору через принудительную конвертацию: {numeric_admin_id}")
                 except Exception as e2:
                     logger.error(f"Вторая попытка отправки также не удалась: {e2}")
+                    # Последняя попытка - используем ID напрямую, без преобразований
+                    try:
+                        direct_id = 1621625897  # Хардкодим ID администратора
+                        await bot.send_message(chat_id=direct_id, text=admin_message)
+                        logger.info(f"Уведомление отправлено администратору напрямую по ID: {direct_id}")
+                    except Exception as e3:
+                        logger.error(f"Все попытки отправить уведомление администратору не удались: {e3}")
             
             # Отправляем подтверждение клиенту
             await message.answer("Добро пожаловать в лотерею!")
