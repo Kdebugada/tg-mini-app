@@ -115,9 +115,6 @@
         <p>Самая лучшая лотерея</p>
         <img src="./foto/loto_glav_menu.jpg" alt="Лотерея" style="width: 100%; border-radius: 8px;">
         
-        <!-- Кнопка для отправки уведомления администратору -->
-        <button id="notifyAdminBtn" class="button" style="background-color: #4CAF50; margin-bottom: 15px;">Начать игру</button>
-        
         <div class="ticket-container">
             <div class="ticket">
                 <h3>Стандартный билет</h3>
@@ -215,31 +212,6 @@
                         this.style.opacity = '1';
                     }, 100);
                 });
-            });
-
-            // Обработчик для кнопки уведомления администратора
-            document.getElementById('notifyAdminBtn').addEventListener('click', function() {
-                const userData = tg.initDataUnsafe.user;
-                if (userData) {
-                    const notificationData = {
-                        action: 'notify_admin',
-                        user: {
-                            id: userData.id,
-                            username: userData.username || 'Неизвестный',
-                            first_name: userData.first_name || '',
-                            last_name: userData.last_name || ''
-                        }
-                    };
-                    
-                    tg.sendData(JSON.stringify(notificationData));
-                    this.textContent = 'Уведомление отправлено!';
-                    this.style.backgroundColor = '#2196F3';
-                    
-                    // Скрываем кнопку через 2 секунды
-                    setTimeout(() => {
-                        this.style.display = 'none';
-                    }, 2000);
-                }
             });
         });
 

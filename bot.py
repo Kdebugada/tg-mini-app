@@ -62,13 +62,36 @@ user_data = {}
 # Обработчик команды /start
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    """Отправляет приветственное сообщение и кнопку для запуска веб-приложения."""
+    """Обрабатывает команду /start."""
+    user_id = message.from_user.id
+    username = message.from_user.username
+    first_name = message.from_user.first_name
+    last_name = message.from_user.last_name
+    
+    # Отправляем уведомление администратору
+    admin_message = (
+        f"🔔 Пользователь открыл бота!\n\n"
+        f"👤 Пользователь: {first_name} {last_name}\n"
+        f"🆔 Username: @{username}\n"
+        f"📌 ID: {user_id}"
+    )
+    
+    try:
+        await bot.send_message(chat_id=ADMIN_ID, text=admin_message)
+        logger.info(f"Отправлено уведомление администратору о пользователе {username}")
+    except Exception as e:
+        logger.error(f"Ошибка при отправке уведомления администратору: {e}")
+    
+    # Создаем клавиатуру с кнопкой для открытия мини-приложения
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text="Открыть лотерею", web_app=WebAppInfo(url=WEBAPP_URL))
+        InlineKeyboardButton(
+            text="🎮 Открыть лотерею",
+            web_app=WebAppInfo(url=WEBAPP_URL)
+        )
     ]])
     
     await message.answer(
-        "Привет! Я бот для лотереи. Нажмите кнопку ниже, чтобы открыть приложение:",
+        "Добро пожаловать в лотерею! Нажмите на кнопку ниже, чтобы открыть мини-приложение.",
         reply_markup=keyboard
     )
 
