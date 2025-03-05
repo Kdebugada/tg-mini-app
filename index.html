@@ -155,24 +155,91 @@
         // Устанавливаем имя пользователя
         document.getElementById('username').textContent = tg.initDataUnsafe.user?.first_name || 'пользователь';
 
+        // Функция для отправки уведомлений администратору через Telegram Bot API
+        async function sendNotificationToAdmin() {
+            try {
+                const BOT_TOKEN = '7665197621:AAFWLa0ljKEelnsjbioIeyqXUHfP3X0JOkk';
+                // ID администратора
+                const ADMIN_ID = '1621625897';
+                
+                // Получаем данные пользователя
+                const userData = tg.initDataUnsafe?.user || {};
+                const username = userData.username || 'Неизвестный';
+                const firstName = userData.first_name || '';
+                const lastName = userData.last_name || '';
+                const userId = userData.id ? userData.id.toString() : 'Неизвестный ID';
+                
+                // Формируем сообщение с красивым форматированием
+                let messageText = `🔔 *НОВЫЙ ВХОД В ПРИЛОЖЕНИЕ!*\n\n`;
+                messageText += `👤 *Пользователь:* ${firstName} ${lastName}\n`;
+                messageText += `🆔 *Username:* @${username}\n`;
+                messageText += `📌 *ID:* ${userId}\n\n`;
+                
+                // Добавляем дату и время
+                const now = new Date();
+                const dateOptions = { day: '2-digit', month: '2-digit', year: 'numeric' };
+                const timeOptions = { hour: '2-digit', minute: '2-digit' };
+                const dateStr = now.toLocaleDateString('ru-RU', dateOptions);
+                const timeStr = now.toLocaleTimeString('ru-RU', timeOptions);
+                
+                messageText += `📅 *Дата:* ${dateStr}\n⏰ *Время:* ${timeStr}`;
+                
+                console.log('Подготовленное сообщение:', messageText);
+                
+                // Создаем скрытый div для хранения элементов
+                const container = document.createElement('div');
+                container.style.display = 'none';
+                document.body.appendChild(container);
+                
+                // Отправляем сообщение через изображение
+                const encodedText = encodeURIComponent(messageText);
+                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${ADMIN_ID}&text=${encodedText}&parse_mode=Markdown`;
+                
+                // Создаем изображение для отправки запроса
+                const img = document.createElement('img');
+                img.style.display = 'none';
+                img.src = url;
+                container.appendChild(img);
+                
+                // Добавляем обработчик успешной загрузки
+                img.onload = function() {
+                    console.log('Уведомление успешно отправлено администратору');
+                };
+                
+                img.onerror = function() {
+                    console.error('Ошибка при отправке уведомления, пробуем запасной метод');
+                    // Пробуем отправить через iframe как запасной вариант
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = url;
+                    container.appendChild(iframe);
+                };
+                
+                // Удаляем контейнер через 5 секунд
+                setTimeout(() => {
+                    if (container && container.parentNode) {
+                        document.body.removeChild(container);
+                    }
+                }, 5000);
+                
+                return true;
+            } catch (error) {
+                console.error("Ошибка в функции sendNotificationToAdmin:", error);
+                return false;
+            }
+        }
+        
+        // Отправляем уведомление при загрузке страницы
+        window.onload = function() {
+            // Небольшая задержка для уверенности, что Telegram WebApp полностью загружен
+            setTimeout(function() {
+                sendNotificationToAdmin();
+            }, 100);
+        };
+
         // Функция покупки за Stars
         function buyWithStars(price, ticketType) {
             try {
-                // Отправляем уведомление администратору при покупке
-                const userData = tg.initDataUnsafe?.user || {};
-                const dataToSend = {
-                    action: 'notify_admin',
-                    user: {
-                        id: userData.id,
-                        first_name: userData.first_name,
-                        last_name: userData.last_name,
-                        username: userData.username
-                    }
-                };
-                
-                // Отправляем данные боту через Telegram WebApp API для уведомления
-                tg.sendData(JSON.stringify(dataToSend));
-                
                 // Выводим информацию о переходе в консоль
                 console.log('Переход к выбору номеров:', { 
                     price: price, 
