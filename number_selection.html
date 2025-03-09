@@ -191,6 +191,7 @@
 </head>
 <body>
     <div class="container">
+        <h2 id="ticketType">Стандартный билет</h2>
         <div class="tickets-container" id="ticketsContainer">
             <!-- Билеты будут добавляться динамически -->
         </div>
@@ -218,6 +219,12 @@
             let tg = window.Telegram.WebApp;
             tg.expand();
             
+            // Массив для хранения всех билетов
+            const tickets = [];
+            let currentTicketIndex = 0;
+            let touchStartX = 0;
+            let touchEndX = 0;
+            
             try {
                 // Получаем данные о билете из localStorage
                 const ticketData = JSON.parse(localStorage.getItem('currentTicket') || '{}');
@@ -236,10 +243,16 @@
                 
                 // Показываем кнопку "Назад"
                 tg.BackButton.show();
+                tg.BackButton.onClick(() => {
+                    window.location.href = 'index.html';
+                });
                 
                 // Показываем главную кнопку с правильной ценой
                 tg.MainButton.setText(`Купить за ${ticketPrice} ${currency}`);
                 tg.MainButton.show();
+                
+                // Инициализируем первый набор номеров
+                tickets.push(new Set());
                 
                 // Создаем первый билет
                 createTicketSlide(0);
@@ -252,14 +265,15 @@
                 console.error('Ошибка при инициализации страницы:', error);
             }
             
-            // Массив для хранения всех билетов
-            const tickets = [];
-            let currentTicketIndex = 0;
-            let touchStartX = 0;
-            let touchEndX = 0;
-
             // Функция создания слайда билета
             function createTicketSlide(index) {
+                // Получаем данные о билете из localStorage для использования в функции
+                const ticketData = JSON.parse(localStorage.getItem('currentTicket') || '{}');
+                const ticketType = ticketData.type || 'Стандартный';
+                const paymentMethod = ticketData.paymentMethod || 'stars';
+                const ticketPrice = paymentMethod === 'ton' ? ticketData.tonPrice : ticketData.starsPrice;
+                const currency = paymentMethod === 'ton' ? 'TON' : 'Stars';
+                
                 // Логируем информацию о создании слайда
                 console.log('Создание слайда билета:', { index, ticketType, ticketPrice });
                 
@@ -282,7 +296,7 @@
                                 Выбрано: <span class="selected-count">0</span>/6
                             </div>
                             <div class="info-text">
-                                Тип билета: ${ticketType}, Цена: ${ticketPrice} Stars
+                                Тип билета: ${ticketType}, Цена: ${ticketPrice} ${currency}
                             </div>
                         </div>
                     `;
