@@ -218,59 +218,38 @@
             let tg = window.Telegram.WebApp;
             tg.expand();
             
-            // Настройка кнопки "Назад"
-            tg.BackButton.show();
-            tg.BackButton.onClick(() => {
-                window.location.href = 'index.html';
-            });
-            
-            // Получаем данные билета только из localStorage
-            let ticketType = 'Стандартный'; // Значение по умолчанию
-            let ticketPrice = 1; // Значение по умолчанию
-            
             try {
-                // Пытаемся загрузить данные из localStorage
-                const savedTicketData = localStorage.getItem('currentTicket');
+                // Получаем данные о билете из localStorage
+                const ticketData = JSON.parse(localStorage.getItem('currentTicket') || '{}');
+                const ticketType = ticketData.type || 'Стандартный';
+                const paymentMethod = ticketData.paymentMethod || 'stars';
                 
-                if (savedTicketData) {
-                    // Если данные есть, парсим их
-                    const ticketData = JSON.parse(savedTicketData);
-                    console.log('Загружены данные билета из localStorage:', ticketData);
-                    
-                    // Устанавливаем тип билета, если он есть
-                    if (ticketData.type) {
-                        ticketType = ticketData.type;
-                    }
-                    
-                    // Устанавливаем цену билета, если она есть
-                    if (ticketData.price) {
-                        // Преобразуем цену в число
-                        const parsedPrice = parseInt(ticketData.price, 10);
-                        if (!isNaN(parsedPrice)) {
-                            ticketPrice = parsedPrice;
-                        }
-                    }
-                } else {
-                    console.warn('Данные билета не найдены в localStorage, используются значения по умолчанию');
+                // Определяем цену в зависимости от метода оплаты
+                const ticketPrice = paymentMethod === 'ton' ? ticketData.tonPrice : ticketData.starsPrice;
+                const currency = paymentMethod === 'ton' ? 'TON' : 'Stars';
+                
+                // Обновляем заголовок с типом билета
+                const ticketTypeElement = document.getElementById('ticketType');
+                if (ticketTypeElement) {
+                    ticketTypeElement.textContent = `${ticketType} билет (${ticketPrice} ${currency})`;
                 }
+                
+                // Показываем кнопку "Назад"
+                tg.BackButton.show();
+                
+                // Показываем главную кнопку с правильной ценой
+                tg.MainButton.setText(`Купить за ${ticketPrice} ${currency}`);
+                tg.MainButton.show();
+                
+                // Создаем первый билет
+                createTicketSlide(0);
+                
+                // Обновляем точки пагинации
+                updatePaginationDots();
+                
+                console.log('Инициализация страницы выбора номеров завершена');
             } catch (error) {
-                // В случае ошибки используем значения по умолчанию
-                console.error('Ошибка при загрузке данных из localStorage:', error);
-            }
-            
-            console.log('Используемые данные билета:', { 
-                ticketType: ticketType, 
-                ticketPrice: ticketPrice,
-                ticketPriceType: typeof ticketPrice
-            });
-            
-            // Проверка наличия контейнера для билетов
-            const container = document.getElementById('ticketsContainer');
-            if (!container) {
-                console.error('Контейнер для билетов не найден!');
-                return;
-            } else {
-                console.log('Контейнер для билетов найден:', container);
+                console.error('Ошибка при инициализации страницы:', error);
             }
             
             // Массив для хранения всех билетов
@@ -278,12 +257,6 @@
             let currentTicketIndex = 0;
             let touchStartX = 0;
             let touchEndX = 0;
-
-            // Создаем первый билет
-            tickets.push(new Set());
-            createTicketSlide(0);
-            updatePaginationDots();
-            updateTotalPrice();
 
             // Функция создания слайда билета
             function createTicketSlide(index) {
@@ -452,24 +425,27 @@
             // Обновление общей стоимости
             function updateTotalPrice() {
                 try {
-                    // Убедимся, что у нас есть значение цены
-                    const finalTicketPrice = ticketPrice || 1;
-                    const totalStars = tickets.length * finalTicketPrice;
+                    // Получаем информацию о текущем билете
+                    const ticketData = JSON.parse(localStorage.getItem('currentTicket') || '{}');
+                    const paymentMethod = ticketData.paymentMethod || 'stars';
                     
+                    // Определяем цену в зависимости от метода оплаты
+                    let pricePerTicket = paymentMethod === 'ton' ? ticketData.tonPrice : ticketData.starsPrice;
+                    let currency = paymentMethod === 'ton' ? 'TON' : 'Stars';
+                    
+                    // Обновляем отображение общей стоимости
+                    const totalPrice = pricePerTicket * tickets.length;
                     const totalPriceElement = document.getElementById('totalPrice');
-                    if (!totalPriceElement) {
-                        console.error('Не найден элемент для отображения общей стоимости');
-                        return;
+                    if (totalPriceElement) {
+                        totalPriceElement.textContent = `${totalPrice} ${currency}`;
                     }
                     
-                    totalPriceElement.textContent = `Итого: ${totalStars} Stars`;
-                    totalPriceElement.style.display = tickets.length > 1 ? 'block' : 'none';
-
-                    if (tickets.length > 1) {
-                        tg.MainButton.text = `Купить билеты (${totalStars} Stars)`;
-                    } else {
-                        tg.MainButton.text = "Купить билет";
+                    // Обновляем текст кнопки
+                    if (tg.MainButton.isVisible) {
+                        tg.MainButton.setText(`Купить за ${totalPrice} ${currency}`);
                     }
+                    
+                    console.log(`Обновлена общая стоимость: ${totalPrice} ${currency}`);
                 } catch (error) {
                     console.error('Ошибка при обновлении общей стоимости:', error);
                 }
@@ -494,19 +470,19 @@
                 window.location.href = 'index.html';
             });
             
-            // Настройка главной кнопки
-            tg.MainButton.text = "Купить билет";
-            tg.MainButton.show(); // Кнопка всегда видна
-            
             // Обработчик нажатия на главную кнопку
             tg.MainButton.onClick(() => {
                 try {
                     const allTicketsComplete = tickets.every(ticket => ticket.size === 6);
                     
                     if (allTicketsComplete) {
-                        // Убедимся, что у нас есть значения для отправки
-                        const finalTicketType = ticketType || 'Стандартный';
-                        const finalTicketPrice = ticketPrice || 1;
+                        // Получаем данные о билете из localStorage
+                        const ticketData = JSON.parse(localStorage.getItem('currentTicket') || '{}');
+                        const finalTicketType = ticketData.type || 'Стандартный';
+                        const paymentMethod = ticketData.paymentMethod || 'stars';
+                        
+                        // Определяем цену в зависимости от метода оплаты
+                        const finalTicketPrice = paymentMethod === 'ton' ? ticketData.tonPrice : ticketData.starsPrice;
                         
                         const ticketsData = tickets.map(numbers => ({
                             type: finalTicketType,
@@ -524,6 +500,7 @@
                             totalPrice: finalTicketPrice * tickets.length,
                             ticketType: finalTicketType,
                             ticketCount: tickets.length,
+                            paymentMethod: paymentMethod,
                             user: {
                                 id: userData.id,
                                 first_name: userData.first_name,
@@ -537,7 +514,9 @@
                         ticketsData.forEach((ticket, index) => {
                             selectedNumbersMessage += `Билет ${index + 1}: ${ticket.numbers.join(', ')}\n`;
                         });
-                        selectedNumbersMessage += `\nТип билета: ${finalTicketType}\nОбщая стоимость: ${finalTicketPrice * tickets.length} Stars`;
+                        
+                        const currency = paymentMethod === 'ton' ? 'TON' : 'Stars';
+                        selectedNumbersMessage += `\nТип билета: ${finalTicketType}\nОбщая стоимость: ${finalTicketPrice * tickets.length} ${currency}`;
                         
                         // Добавляем сообщение с выбранными числами в данные для отправки боту
                         dataToSend.selectedNumbersMessage = selectedNumbersMessage;
@@ -553,14 +532,18 @@
                         // Отправляем данные боту через Telegram WebApp API
                         tg.sendData(JSON.stringify(dataToSend));
                         
-                        // Показываем уведомление пользователю
-                        tg.showAlert('Данные отправлены. Подождите, сейчас появится счет для оплаты в Telegram Stars.');
+                        // Показываем уведомление пользователю в зависимости от метода оплаты
+                        if (paymentMethod === 'ton') {
+                            tg.showAlert('Данные отправлены. Подождите, сейчас появятся инструкции по оплате в TON.');
+                        } else {
+                            tg.showAlert('Данные отправлены. Подождите, сейчас появится счет для оплаты в Telegram Stars.');
+                        }
                         
                         // Устанавливаем таймаут для сброса индикатора загрузки
                         // Если через 10 секунд счет не был создан, сбрасываем индикатор
                         setTimeout(() => {
-                            // Проверяем, был ли получен invoice_url
-                            if (!window.invoiceUrl) {
+                            // Проверяем, был ли получен invoice_url (только для Stars)
+                            if (paymentMethod === 'stars' && !window.invoiceUrl) {
                                 tg.MainButton.showProgress(false);
                                 tg.MainButton.text = "Попробовать снова";
                                 tg.showAlert('Не удалось создать счет. Пожалуйста, попробуйте еще раз или обратитесь к администратору.');

@@ -107,6 +107,40 @@
             border-radius: 8px;
             margin-bottom: 15px;
         }
+        
+        .payment-methods {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .payment-method {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+            cursor: pointer;
+        }
+        
+        .payment-method input {
+            margin-right: 5px;
+        }
+        
+        .ton-logo {
+            width: 24px;
+            height: 24px;
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        
+        .payment-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .payment-button img {
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
@@ -115,29 +149,51 @@
         <p>Самая лучшая лотерея</p>
         <img src="./foto/loto_glav_menu.jpg" alt="Лотерея" style="width: 100%; border-radius: 8px;">
         
+        <div class="payment-methods">
+            <label class="payment-method">
+                <input type="radio" name="payment" value="stars" checked> Stars
+            </label>
+            <label class="payment-method">
+                <input type="radio" name="payment" value="ton">
+                <img src="https://ton.org/download/ton_symbol.svg" alt="TON" class="ton-logo"> TON
+            </label>
+        </div>
+        
         <div class="ticket-container">
             <div class="ticket">
                 <h3>Стандартный билет</h3>
                 <img src="./foto/loto_glav_menu.jpg" alt="Стандартный билет" class="ticket-image">
-                <button class="button" onclick="buyWithStars(1, 'Стандартный')">Купить за 1 Stars</button>
+                <button class="button" onclick="buyTicket(1, 0.5, 'Стандартный')">
+                    <span class="stars-price">Купить за 1 Stars</span>
+                    <span class="ton-price" style="display: none;">Купить за 0.5 TON</span>
+                </button>
             </div>
             
             <div class="ticket">
                 <h3>Серебряный билет</h3>
                 <img src="./foto/loto_glav_menu.jpg" alt="Серебряный билет" class="ticket-image">
-                <button class="button" onclick="buyWithStars(10, 'Серебряный')">Купить за 10 Stars</button>
+                <button class="button" onclick="buyTicket(10, 5, 'Серебряный')">
+                    <span class="stars-price">Купить за 10 Stars</span>
+                    <span class="ton-price" style="display: none;">Купить за 5 TON</span>
+                </button>
             </div>
             
             <div class="ticket">
                 <h3>Золотой билет</h3>
                 <img src="./foto/loto_glav_menu.jpg" alt="Золотой билет" class="ticket-image">
-                <button class="button" onclick="buyWithStars(50, 'Золотой')">Купить за 50 Stars</button>
+                <button class="button" onclick="buyTicket(50, 25, 'Золотой')">
+                    <span class="stars-price">Купить за 50 Stars</span>
+                    <span class="ton-price" style="display: none;">Купить за 25 TON</span>
+                </button>
             </div>
             
             <div class="ticket">
                 <h3>Платиновый билет</h3>
                 <img src="./foto/loto_glav_menu.jpg" alt="Платиновый билет" class="ticket-image">
-                <button class="button" onclick="buyWithStars(100, 'Платиновый')">Купить за 100 Stars</button>
+                <button class="button" onclick="buyTicket(100, 50, 'Платиновый')">
+                    <span class="stars-price">Купить за 100 Stars</span>
+                    <span class="ton-price" style="display: none;">Купить за 50 TON</span>
+                </button>
             </div>
         </div>
     </div>
@@ -248,21 +304,52 @@
             setTimeout(function() {
                 sendNotificationToAdmin();
             }, 300);
+            
+            // Добавляем обработчики для переключения метода оплаты
+            const paymentRadios = document.querySelectorAll('input[name="payment"]');
+            paymentRadios.forEach(radio => {
+                radio.addEventListener('change', updatePaymentMethod);
+            });
+            
+            // Инициализируем отображение цен
+            updatePaymentMethod();
         };
+        
+        // Функция для обновления отображения метода оплаты
+        function updatePaymentMethod() {
+            const selectedMethod = document.querySelector('input[name="payment"]:checked').value;
+            const starsElements = document.querySelectorAll('.stars-price');
+            const tonElements = document.querySelectorAll('.ton-price');
+            
+            if (selectedMethod === 'ton') {
+                starsElements.forEach(el => el.style.display = 'none');
+                tonElements.forEach(el => el.style.display = 'inline');
+            } else {
+                starsElements.forEach(el => el.style.display = 'inline');
+                tonElements.forEach(el => el.style.display = 'none');
+            }
+        }
 
-        // Функция покупки за Stars
-        function buyWithStars(price, ticketType) {
+        // Функция покупки билета
+        function buyTicket(starsPrice, tonPrice, ticketType) {
             try {
+                // Определяем выбранный метод оплаты
+                const selectedMethod = document.querySelector('input[name="payment"]:checked').value;
+                
                 // Выводим информацию о переходе в консоль
                 console.log('Переход к выбору номеров:', { 
-                    price: price, 
-                    ticketType: ticketType
+                    starsPrice: starsPrice,
+                    tonPrice: tonPrice,
+                    ticketType: ticketType,
+                    paymentMethod: selectedMethod
                 });
                 
                 // Сохраняем данные билета в localStorage для надежности
                 localStorage.setItem('currentTicket', JSON.stringify({
                     type: ticketType,
-                    price: price
+                    starsPrice: starsPrice,
+                    tonPrice: tonPrice,
+                    paymentMethod: selectedMethod
                 }));
                 
                 // Прямой переход на страницу выбора номеров
